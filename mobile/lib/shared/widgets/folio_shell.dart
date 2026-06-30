@@ -48,7 +48,7 @@ class FolioBottomBar extends StatelessWidget {
           _NavIcon(
             icon: Icons.grid_view_rounded,
             selected: currentIndex == 1,
-            onTap: () => context.push('/categories'),
+            onTap: () => context.go('/categories'),
           ),
           _FabButton(onTap: () => context.push('/add')),
           _NavIcon(

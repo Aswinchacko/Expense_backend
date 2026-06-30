@@ -46,7 +46,7 @@ async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-async function handleExpensesList(req: VercelRequest, res: VercelResponse) {
+export async function handleExpensesList(req: VercelRequest, res: VercelResponse) {
   return withAuth(req, res, async (authedReq, authedRes) => {
     await ensureSeedCategories();
     const expenses = await getCollection<ExpenseDoc>('expenses');
@@ -93,7 +93,7 @@ async function handleExpensesList(req: VercelRequest, res: VercelResponse) {
   });
 }
 
-async function handleExpensesCreate(req: VercelRequest, res: VercelResponse) {
+export async function handleExpensesCreate(req: VercelRequest, res: VercelResponse) {
   return withAuth(req, res, async (authedReq, authedRes) => {
     await ensureSeedCategories();
     const expenses = await getCollection<ExpenseDoc>('expenses');
@@ -127,7 +127,7 @@ async function handleExpensesCreate(req: VercelRequest, res: VercelResponse) {
   });
 }
 
-async function handleExpenseById(req: VercelRequest, res: VercelResponse, id: string) {
+export async function handleExpenseById(req: VercelRequest, res: VercelResponse, id: string) {
   if (req.method === 'PATCH') {
     return withAuth(req, res, async (authedReq, authedRes) => {
       const expenses = await getCollection<ExpenseDoc>('expenses');
@@ -168,7 +168,7 @@ async function handleExpenseById(req: VercelRequest, res: VercelResponse, id: st
   res.status(405).json({ error: 'Method not allowed' });
 }
 
-async function handleCategories(req: VercelRequest, res: VercelResponse) {
+export async function handleCategories(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     return withAuth(req, res, async (authedReq, authedRes) => {
       await ensureSeedCategories();
@@ -203,7 +203,7 @@ async function handleCategories(req: VercelRequest, res: VercelResponse) {
   res.status(405).json({ error: 'Method not allowed' });
 }
 
-async function handleBudgetsList(req: VercelRequest, res: VercelResponse) {
+export async function handleBudgetsList(req: VercelRequest, res: VercelResponse) {
   return withAuth(req, res, async (authedReq, authedRes) => {
     const budgets = await getCollection<BudgetDoc>('budgets');
     const expenses = await getCollection<ExpenseDoc>('expenses');
@@ -233,7 +233,7 @@ async function handleBudgetsList(req: VercelRequest, res: VercelResponse) {
   });
 }
 
-async function handleBudgetsCreate(req: VercelRequest, res: VercelResponse) {
+export async function handleBudgetsCreate(req: VercelRequest, res: VercelResponse) {
   return withAuth(req, res, async (authedReq, authedRes) => {
     const budgets = await getCollection<BudgetDoc>('budgets');
     const categories = await getCollection<CategoryDoc>('categories');
@@ -258,7 +258,7 @@ async function handleBudgetsCreate(req: VercelRequest, res: VercelResponse) {
   });
 }
 
-async function handleBudgetById(req: VercelRequest, res: VercelResponse, id: string) {
+export async function handleBudgetById(req: VercelRequest, res: VercelResponse, id: string) {
   if (req.method === 'PATCH') {
     return withAuth(req, res, async (authedReq, authedRes) => {
       const budgets = await getCollection<BudgetDoc>('budgets');
@@ -297,7 +297,7 @@ async function handleBudgetById(req: VercelRequest, res: VercelResponse, id: str
   res.status(405).json({ error: 'Method not allowed' });
 }
 
-async function handleProfile(req: VercelRequest, res: VercelResponse) {
+export async function handleProfile(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     return withAuth(req, res, async (authedReq, authedRes) => {
       const user = await getUserById(authedReq.user.id);
@@ -333,7 +333,7 @@ async function handleProfile(req: VercelRequest, res: VercelResponse) {
   res.status(405).json({ error: 'Method not allowed' });
 }
 
-async function handleAnalyticsSummary(req: VercelRequest, res: VercelResponse) {
+export async function handleAnalyticsSummary(req: VercelRequest, res: VercelResponse) {
   return withAuth(req, res, async (authedReq, authedRes) => {
     await ensureSeedCategories();
     const expenses = await getCollection<ExpenseDoc>('expenses');
