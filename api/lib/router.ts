@@ -27,17 +27,17 @@ function getPeriodRange(period: string): { from: string; to: string } {
 
 function parsePath(req: VercelRequest): string[] {
   const raw = req.query.path;
-  if (raw) {
-    const segments = Array.isArray(raw) ? raw : [raw];
-    return segments.flatMap((segment) => segment.split('/').filter(Boolean));
+  if (raw != null && raw !== '') {
+    const segments = Array.isArray(raw) ? raw : [String(raw)];
+    const parsed = segments.flatMap((segment) => segment.split('/').filter(Boolean));
+    if (parsed.length > 0) return parsed;
   }
 
   const url = (req.url ?? '').split('?')[0];
-  const apiIdx = url.indexOf('/api/');
-  if (apiIdx !== -1) {
-    return url.slice(apiIdx + 5).split('/').filter(Boolean);
+  if (url.startsWith('/api/')) {
+    return url.slice(5).split('/').filter(Boolean);
   }
-  if (url.endsWith('/api')) return [];
+  if (url === '/api' || url.endsWith('/api')) return [];
   return [];
 }
 
@@ -542,6 +542,11 @@ export async function routeRequest(req: VercelRequest, res: VercelResponse): Pro
   const path = parsePath(req);
   const method = req.method ?? 'GET';
   const route = path.join('/');
+
+  if (path.length === 0 && method === 'GET') {
+    res.status(200).json({ ok: true, service: 'folio-api' });
+    return;
+  }
 
   if (route === 'auth/google' && method === 'POST') return handleGoogleAuth(req, res);
 

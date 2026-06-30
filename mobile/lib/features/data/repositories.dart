@@ -73,7 +73,7 @@ class ExpenseRepository {
       if (type != null) 'type': type,
       if (search != null) 'search': search,
     });
-    return (res['data'] as List<dynamic>)
+    return (res['data'] as List<dynamic>? ?? [])
         .map((e) => Expense.fromJson(e as Map<String, dynamic>))
         .toList();
   }
@@ -140,7 +140,7 @@ class CategoryRepository {
 
   Future<List<Category>> list() async {
     final res = await _api.get('/api/categories');
-    return (res['data'] as List<dynamic>)
+    return (res['data'] as List<dynamic>? ?? [])
         .map((e) => Category.fromJson(e as Map<String, dynamic>))
         .toList();
   }
@@ -204,7 +204,7 @@ class BudgetRepository {
 
   Future<List<Budget>> list() async {
     final res = await _api.get('/api/budgets');
-    return (res['data'] as List<dynamic>)
+    return (res['data'] as List<dynamic>? ?? [])
         .map((e) => Budget.fromJson(e as Map<String, dynamic>))
         .toList();
   }

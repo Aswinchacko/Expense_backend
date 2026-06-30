@@ -40,7 +40,7 @@ class FolioGreeting extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('hey $name', style: FolioText.amount28),
+        Text('Hey $name', style: FolioText.amount28),
         const SizedBox(height: 4),
         Text('here\'s your money snapshot', style: FolioText.meta12),
       ],

@@ -53,6 +53,7 @@ class ApiClient {
   Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? body}) async {
     try {
       final res = await _dio.post(path, data: body);
+      if (res.data == null || res.data == '') return {};
       return _asMap(res.data);
     } on DioException catch (e) {
       throw Exception(_extractError(e));
