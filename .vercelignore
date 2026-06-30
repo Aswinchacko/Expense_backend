@@ -1,0 +1,12 @@
+mobile/**
+.git/**
+node_modules/**
+**/.dart_tool/**
+**/build/**
+**/.gradle/**
+**/ios/**
+**/android/.gradle/**
+**/android/app/build/**
+**/*.apk
+**/*.aab
+**/*.ipa

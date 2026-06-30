@@ -2,11 +2,7 @@
   "version": 2,
   "installCommand": "npm install",
   "functions": {
-    "api/index.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/[...path].ts": {
+    "api/[[...path]].ts": {
       "memory": 1024,
       "maxDuration": 10
     }

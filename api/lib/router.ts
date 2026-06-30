@@ -106,9 +106,18 @@ export async function handleExpensesList(req: VercelRequest, res: VercelResponse
 export async function handleExpensesCreate(req: VercelRequest, res: VercelResponse) {
   return withAuth(req, res, async (authedReq, authedRes) => {
     await ensureSeedCategories();
+    const body = authedReq.body ?? {};
+    const { action, id } = body;
+
+    if (action === 'update' && id) {
+      return updateExpenseById(authedReq, authedRes, String(id), body);
+    }
+    if (action === 'delete' && id) {
+      return deleteExpenseById(authedReq, authedRes, String(id));
+    }
+
     const expenses = await getCollection<ExpenseDoc>('expenses');
     const categories = await getCollection<CategoryDoc>('categories');
-    const body = authedReq.body ?? {};
     const { category_id, amount, currency, type, note, merchant, date, payment_method, receipt_url } = body;
 
     if (!category_id || !amount || amount <= 0) {
@@ -140,42 +149,58 @@ export async function handleExpensesCreate(req: VercelRequest, res: VercelRespon
 export async function handleExpenseById(req: VercelRequest, res: VercelResponse, id: string) {
   if (req.method === 'PATCH') {
     return withAuth(req, res, async (authedReq, authedRes) => {
-      const expenses = await getCollection<ExpenseDoc>('expenses');
-      const categories = await getCollection<CategoryDoc>('categories');
-      const body = authedReq.body ?? {};
-      const updates: Record<string, unknown> = {};
-      if (body.category_id !== undefined) updates.categoryId = body.category_id;
-      if (body.amount !== undefined) updates.amount = Number(body.amount);
-      if (body.currency !== undefined) updates.currency = body.currency;
-      if (body.type !== undefined) updates.type = body.type;
-      if (body.note !== undefined) updates.note = body.note;
-      if (body.merchant !== undefined) updates.merchant = body.merchant;
-      if (body.date !== undefined) updates.date = body.date;
-      if (body.payment_method !== undefined) updates.paymentMethod = body.payment_method;
-      if (body.receipt_url !== undefined) updates.receiptUrl = body.receipt_url;
-
-      const result = await expenses.findOneAndUpdate(
-        { _id: new ObjectId(id), userId: new ObjectId(authedReq.user.id) },
-        { $set: updates },
-        { returnDocument: 'after' }
-      );
-      if (!result) {
-        authedRes.status(404).json({ error: 'Not found' });
-        return;
-      }
-      const category = await categories.findOne({ _id: result.categoryId });
-      authedRes.status(200).json({ data: serializeExpense(result, category) });
+      await updateExpenseById(authedReq, authedRes, id, authedReq.body ?? {});
     });
   }
   if (req.method === 'DELETE') {
     return withAuth(req, res, async (authedReq, authedRes) => {
-      const expenses = await getCollection<ExpenseDoc>('expenses');
-      await expenses.deleteOne({ _id: new ObjectId(id), userId: new ObjectId(authedReq.user.id) });
-      authedRes.status(204).end();
+      await deleteExpenseById(authedReq, authedRes, id);
     });
   }
   res.setHeader('Allow', 'PATCH, DELETE');
   res.status(405).json({ error: 'Method not allowed' });
+}
+
+async function updateExpenseById(
+  authedReq: { user: { id: string }; body?: Record<string, unknown> },
+  authedRes: VercelResponse,
+  id: string,
+  body: Record<string, unknown>
+) {
+  const expenses = await getCollection<ExpenseDoc>('expenses');
+  const categories = await getCollection<CategoryDoc>('categories');
+  const updates: Record<string, unknown> = {};
+  if (body.category_id !== undefined) updates.categoryId = body.category_id;
+  if (body.amount !== undefined) updates.amount = Number(body.amount);
+  if (body.currency !== undefined) updates.currency = body.currency;
+  if (body.type !== undefined) updates.type = body.type;
+  if (body.note !== undefined) updates.note = body.note;
+  if (body.merchant !== undefined) updates.merchant = body.merchant;
+  if (body.date !== undefined) updates.date = body.date;
+  if (body.payment_method !== undefined) updates.paymentMethod = body.payment_method;
+  if (body.receipt_url !== undefined) updates.receiptUrl = body.receipt_url;
+
+  const result = await expenses.findOneAndUpdate(
+    { _id: new ObjectId(id), userId: new ObjectId(authedReq.user.id) },
+    { $set: updates },
+    { returnDocument: 'after' }
+  );
+  if (!result) {
+    authedRes.status(404).json({ error: 'Not found' });
+    return;
+  }
+  const category = await categories.findOne({ _id: result.categoryId });
+  authedRes.status(200).json({ data: serializeExpense(result, category) });
+}
+
+async function deleteExpenseById(
+  authedReq: { user: { id: string } },
+  authedRes: VercelResponse,
+  id: string
+) {
+  const expenses = await getCollection<ExpenseDoc>('expenses');
+  await expenses.deleteOne({ _id: new ObjectId(id), userId: new ObjectId(authedReq.user.id) });
+  authedRes.status(204).end();
 }
 
 export async function handleCategories(req: VercelRequest, res: VercelResponse) {
@@ -192,8 +217,17 @@ export async function handleCategories(req: VercelRequest, res: VercelResponse) 
   }
   if (req.method === 'POST') {
     return withAuth(req, res, async (authedReq, authedRes) => {
+      const body = authedReq.body ?? {};
+      const { action, id, name, icon } = body;
+
+      if (action === 'update' && id) {
+        return updateCategoryById(authedReq, authedRes, String(id), { name, icon });
+      }
+      if (action === 'delete' && id) {
+        return deleteCategoryById(authedReq, authedRes, String(id));
+      }
+
       const categories = await getCollection<CategoryDoc>('categories');
-      const { name, icon } = authedReq.body ?? {};
       if (!name) {
         authedRes.status(400).json({ error: 'name required' });
         return;
@@ -216,46 +250,63 @@ export async function handleCategories(req: VercelRequest, res: VercelResponse) 
 export async function handleCategoryById(req: VercelRequest, res: VercelResponse, id: string) {
   if (req.method === 'PATCH') {
     return withAuth(req, res, async (authedReq, authedRes) => {
-      const categories = await getCollection<CategoryDoc>('categories');
-      const existing = await categories.findOne({ _id: id });
-      if (!existing) {
-        authedRes.status(404).json({ error: 'Not found' });
-        return;
-      }
-      if (existing.userId !== authedReq.user.id) {
-        authedRes.status(403).json({ error: 'Cannot edit default categories' });
-        return;
-      }
       const { name, icon } = authedReq.body ?? {};
-      const updates: Record<string, unknown> = {};
-      if (name !== undefined) updates.name = name;
-      if (icon !== undefined) updates.icon = icon;
-      const result = await categories.findOneAndUpdate(
-        { _id: id, userId: authedReq.user.id },
-        { $set: updates },
-        { returnDocument: 'after' }
-      );
-      authedRes.status(200).json({ data: serializeCategory(result!) });
+      await updateCategoryById(authedReq, authedRes, id, { name, icon });
     });
   }
   if (req.method === 'DELETE') {
     return withAuth(req, res, async (authedReq, authedRes) => {
-      const categories = await getCollection<CategoryDoc>('categories');
-      const existing = await categories.findOne({ _id: id });
-      if (!existing) {
-        authedRes.status(404).json({ error: 'Not found' });
-        return;
-      }
-      if (existing.userId !== authedReq.user.id) {
-        authedRes.status(403).json({ error: 'Cannot delete default categories' });
-        return;
-      }
-      await categories.deleteOne({ _id: id, userId: authedReq.user.id });
-      authedRes.status(204).end();
+      await deleteCategoryById(authedReq, authedRes, id);
     });
   }
   res.setHeader('Allow', 'PATCH, DELETE');
   res.status(405).json({ error: 'Method not allowed' });
+}
+
+async function updateCategoryById(
+  authedReq: { user: { id: string } },
+  authedRes: VercelResponse,
+  id: string,
+  body: { name?: string; icon?: string }
+) {
+  const categories = await getCollection<CategoryDoc>('categories');
+  const existing = await categories.findOne({ _id: id });
+  if (!existing) {
+    authedRes.status(404).json({ error: 'Not found' });
+    return;
+  }
+  if (existing.userId !== authedReq.user.id) {
+    authedRes.status(403).json({ error: 'Cannot edit default categories' });
+    return;
+  }
+  const updates: Record<string, unknown> = {};
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.icon !== undefined) updates.icon = body.icon;
+  const result = await categories.findOneAndUpdate(
+    { _id: id, userId: authedReq.user.id },
+    { $set: updates },
+    { returnDocument: 'after' }
+  );
+  authedRes.status(200).json({ data: serializeCategory(result!) });
+}
+
+async function deleteCategoryById(
+  authedReq: { user: { id: string } },
+  authedRes: VercelResponse,
+  id: string
+) {
+  const categories = await getCollection<CategoryDoc>('categories');
+  const existing = await categories.findOne({ _id: id });
+  if (!existing) {
+    authedRes.status(404).json({ error: 'Not found' });
+    return;
+  }
+  if (existing.userId !== authedReq.user.id) {
+    authedRes.status(403).json({ error: 'Cannot delete default categories' });
+    return;
+  }
+  await categories.deleteOne({ _id: id, userId: authedReq.user.id });
+  authedRes.status(204).end();
 }
 
 export async function handleBudgetsList(req: VercelRequest, res: VercelResponse) {
