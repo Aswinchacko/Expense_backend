@@ -5,6 +5,6 @@ class Env {
   );
   static const googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
-    defaultValue: '',
+    defaultValue: '528416899893-3mqrmp86f1a3fkkib09rspd61ror73d6.apps.googleusercontent.com',
   );
 }
