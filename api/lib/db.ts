@@ -26,7 +26,8 @@ export { ObjectId };
 export interface UserDoc {
   _id: ObjectId;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
+  googleId?: string;
   displayName?: string;
   currency: string;
   avatarUrl?: string;

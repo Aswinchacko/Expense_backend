@@ -25,33 +25,61 @@ final dioProvider = Provider<Dio>((ref) {
   return dio;
 });
 
+String _extractError(DioException e) {
+  final data = e.response?.data;
+  if (data is Map) {
+    return data['error']?.toString() ?? e.message ?? 'Request failed';
+  }
+  if (data is String && data.isNotEmpty) {
+    return data.length > 120 ? '${data.substring(0, 120)}...' : data;
+  }
+  return e.message ?? 'Request failed';
+}
+
 class ApiClient {
   ApiClient(this._dio);
 
   final Dio _dio;
 
   Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) async {
-    final res = await _dio.get(path, queryParameters: query);
-    return res.data as Map<String, dynamic>;
+    try {
+      final res = await _dio.get(path, queryParameters: query);
+      return _asMap(res.data);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
   Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? body}) async {
     try {
       final res = await _dio.post(path, data: body);
-      return res.data as Map<String, dynamic>;
+      return _asMap(res.data);
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] ?? e.message;
-      throw Exception(msg);
+      throw Exception(_extractError(e));
     }
   }
 
   Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? body}) async {
-    final res = await _dio.patch(path, data: body);
-    return res.data as Map<String, dynamic>;
+    try {
+      final res = await _dio.patch(path, data: body);
+      return _asMap(res.data);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
   Future<void> delete(String path) async {
-    await _dio.delete(path);
+    try {
+      await _dio.delete(path);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Map<String, dynamic> _asMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw Exception('Unexpected server response');
   }
 }
 

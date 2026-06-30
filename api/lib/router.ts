@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ObjectId } from 'mongodb';
-import { createUser, authenticateUser, signToken, getUserById } from './auth';
+import { authenticateWithGoogle, signToken, getUserById } from './auth';
 import { getCollection, ExpenseDoc, CategoryDoc, BudgetDoc, UserDoc } from './db';
 import {
   ensureSeedCategories,
@@ -31,38 +31,19 @@ function parsePath(req: VercelRequest): string[] {
   return Array.isArray(raw) ? raw : [raw];
 }
 
-async function handleSignup(req: VercelRequest, res: VercelResponse) {
-  const { email, password } = req.body ?? {};
-  if (!email || !password) {
-    res.status(400).json({ error: 'email and password required' });
-    return;
-  }
-  if (password.length < 6) {
-    res.status(400).json({ error: 'password must be at least 6 characters' });
+async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
+  const { id_token } = req.body ?? {};
+  if (!id_token) {
+    res.status(400).json({ error: 'id_token required' });
     return;
   }
   try {
-    const user = await createUser(email, password);
+    const user = await authenticateWithGoogle(id_token);
     const token = signToken({ id: user._id.toString(), email: user.email });
-    res.status(201).json({ data: { token, user: serializeUser(user) } });
+    res.status(200).json({ data: { token, user: serializeUser(user) } });
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : 'Signup failed' });
+    res.status(401).json({ error: err instanceof Error ? err.message : 'Google auth failed' });
   }
-}
-
-async function handleLogin(req: VercelRequest, res: VercelResponse) {
-  const { email, password } = req.body ?? {};
-  if (!email || !password) {
-    res.status(400).json({ error: 'email and password required' });
-    return;
-  }
-  const user = await authenticateUser(email, password);
-  if (!user) {
-    res.status(401).json({ error: 'Invalid email or password' });
-    return;
-  }
-  const token = signToken({ id: user._id.toString(), email: user.email });
-  res.status(200).json({ data: { token, user: serializeUser(user) } });
 }
 
 async function handleExpensesList(req: VercelRequest, res: VercelResponse) {
@@ -456,8 +437,7 @@ export async function routeRequest(req: VercelRequest, res: VercelResponse): Pro
   const method = req.method ?? 'GET';
   const route = path.join('/');
 
-  if (route === 'auth/signup' && method === 'POST') return handleSignup(req, res);
-  if (route === 'auth/login' && method === 'POST') return handleLogin(req, res);
+  if (route === 'auth/google' && method === 'POST') return handleGoogleAuth(req, res);
 
   if (route === 'expenses' && method === 'GET') return handleExpensesList(req, res);
   if (route === 'expenses' && method === 'POST') return handleExpensesCreate(req, res);

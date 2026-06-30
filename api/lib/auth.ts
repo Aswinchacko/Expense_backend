@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import { ObjectId } from 'mongodb';
 import { getCollection, UserDoc } from './db';
 
@@ -56,9 +57,62 @@ export async function createUser(email: string, password: string): Promise<UserD
 export async function authenticateUser(email: string, password: string): Promise<UserDoc | null> {
   const users = await getCollection<UserDoc>('users');
   const user = await users.findOne({ email: email.toLowerCase() });
-  if (!user) return null;
+  if (!user?.passwordHash) return null;
   const ok = await verifyPassword(password, user.passwordHash);
   return ok ? user : null;
+}
+
+function getGoogleClientId(): string {
+  const id = process.env.GOOGLE_CLIENT_ID;
+  if (!id) throw new Error('Missing env: GOOGLE_CLIENT_ID');
+  return id;
+}
+
+export async function authenticateWithGoogle(idToken: string): Promise<UserDoc> {
+  const client = new OAuth2Client(getGoogleClientId());
+  const ticket = await client.verifyIdToken({
+    idToken,
+    audience: getGoogleClientId(),
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.email || !payload.sub) {
+    throw new Error('Invalid Google token');
+  }
+
+  const users = await getCollection<UserDoc>('users');
+  const email = payload.email.toLowerCase();
+  let user = await users.findOne({
+    $or: [{ googleId: payload.sub }, { email }],
+  });
+
+  if (user) {
+    if (!user.googleId) {
+      await users.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            googleId: payload.sub,
+            displayName: user.displayName ?? payload.name,
+            avatarUrl: user.avatarUrl ?? payload.picture,
+          },
+        }
+      );
+      user.googleId = payload.sub;
+    }
+    return user;
+  }
+
+  const doc: UserDoc = {
+    _id: new ObjectId(),
+    email,
+    googleId: payload.sub,
+    displayName: payload.name ?? email.split('@')[0],
+    avatarUrl: payload.picture,
+    currency: 'USD',
+    createdAt: new Date(),
+  };
+  await users.insertOne(doc);
+  return doc;
 }
 
 export async function getUserById(id: string): Promise<UserDoc | null> {

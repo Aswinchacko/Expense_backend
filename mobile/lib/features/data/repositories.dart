@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
@@ -14,33 +15,37 @@ class AuthRepository {
   final ApiClient _api;
   final Ref _ref;
 
-  Future<void> signup(String email, String password) async {
-    final res = await _api.post('/api/auth/signup', body: {
-      'email': email,
-      'password': password,
-    });
-    final data = res['data'] as Map<String, dynamic>;
-    await _ref.read(authNotifierProvider.notifier).setSession(
-          token: data['token'] as String,
-          userId: (data['user'] as Map<String, dynamic>)['id'] as String?,
-          email: (data['user'] as Map<String, dynamic>)['email'] as String?,
-        );
+  Future<void> loginWithGoogle(String idToken) async {
+    final res = await _api.post('/api/auth/google', body: {'id_token': idToken});
+    await _applyAuthResponse(res);
   }
 
-  Future<void> login(String email, String password) async {
-    final res = await _api.post('/api/auth/login', body: {
-      'email': email,
-      'password': password,
-    });
-    final data = res['data'] as Map<String, dynamic>;
+  Future<void> _applyAuthResponse(Map<String, dynamic> res) async {
+    final data = res['data'];
+    if (data is! Map) throw Exception('Unexpected server response');
+
+    final token = data['token'];
+    if (token is! String) throw Exception('Missing auth token');
+
+    final user = data['user'];
+    String? userId;
+    String? email;
+    if (user is Map) {
+      userId = user['id']?.toString();
+      email = user['email']?.toString();
+    }
+
     await _ref.read(authNotifierProvider.notifier).setSession(
-          token: data['token'] as String,
-          userId: (data['user'] as Map<String, dynamic>)['id'] as String?,
-          email: (data['user'] as Map<String, dynamic>)['email'] as String?,
+          token: token,
+          userId: userId,
+          email: email,
         );
   }
 
   Future<void> logout() async {
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     await _ref.read(authNotifierProvider.notifier).logout();
   }
 }
