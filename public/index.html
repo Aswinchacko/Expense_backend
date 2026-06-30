@@ -389,7 +389,7 @@
       <h2 class="section-title">Your money deserves clarity.<br/>Get it today — free.</h2>
       <p class="section-sub">Take control of your spending today. One download. Zero cost. No catch.</p>
 
-      <a href="#" class="btn btn-primary btn-lg btn-download" id="downloadBtn">
+      <a href="/downloads/folio.apk" download="folio.apk" class="btn btn-primary btn-lg btn-download" id="downloadBtn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -415,7 +415,7 @@
         </span>
       </div>
 
-      <p class="final-fine" id="downloadHint">Set your download link in DOWNLOAD_URL at the bottom of this page.</p>
+      <p class="final-fine" id="downloadHint">On Android: allow installs from your browser if prompted, then open the downloaded APK.</p>
 
       <p class="final-legal">
         <a href="privacy.html">Privacy Policy</a>
@@ -458,15 +458,13 @@
   </div>
 
   <script>
-    // ── Replace with your APK or Play Store URL when ready ──
-    const DOWNLOAD_URL = '#download';
+    // Direct APK download — file lives at landing/downloads/folio.apk (copied to public/ on build)
+    const DOWNLOAD_URL = '/downloads/folio.apk';
 
     document.querySelectorAll('.btn-download').forEach(el => {
       el.href = DOWNLOAD_URL;
+      el.setAttribute('download', 'folio.apk');
     });
-
-    const hint = document.getElementById('downloadHint');
-    if (hint && DOWNLOAD_URL !== '#download') hint.hidden = true;
 
     // Nav scroll
     const nav = document.getElementById('nav');

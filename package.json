@@ -6,6 +6,7 @@
     "dev:api": "vercel dev",
     "build:api": "tsc --project api/tsconfig.json",
     "build:landing": "node scripts/copy-landing.js",
+    "screenshots": "node scripts/capture-screenshots.mjs",
     "build": "npm run build:api && npm run build:landing",
     "typecheck": "tsc --project api/tsconfig.json --noEmit"
   },
@@ -20,6 +21,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.10",
     "@vercel/node": "^5.1.14",
+    "puppeteer": "^25.2.1",
     "typescript": "^5.8.2",
     "vercel": "^54.18.5"
   }
