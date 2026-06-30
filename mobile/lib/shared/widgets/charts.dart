@@ -111,7 +111,7 @@ class CategoryBar extends StatelessWidget {
     required this.amount,
     required this.percent,
     required this.icon,
-    this.currency = '\$',
+    this.currency = r'$',
   });
 
   final String label;
@@ -160,12 +160,14 @@ class BudgetBar extends StatelessWidget {
     required this.spent,
     required this.total,
     required this.percent,
+    this.currency = r'$',
   });
 
   final String name;
   final double spent;
   final double total;
   final int percent;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +181,7 @@ class BudgetBar extends StatelessWidget {
             children: [
               Text(name, style: FolioTheme.labelStyle(context)),
               Text(
-                '\$${spent.toStringAsFixed(0)} / \$${total.toStringAsFixed(0)}',
+                '$currency${spent.toStringAsFixed(0)} / $currency${total.toStringAsFixed(0)}',
                 style: FolioTheme.metaStyle(context, size: 12),
               ),
             ],

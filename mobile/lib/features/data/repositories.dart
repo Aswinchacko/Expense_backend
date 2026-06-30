@@ -117,6 +117,14 @@ class CategoryRepository {
         .map((e) => Category.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  Future<Category> create({required String name, String icon = '📦'}) async {
+    final res = await _api.post('/api/categories', body: {
+      'name': name,
+      'icon': icon,
+    });
+    return Category.fromJson(res['data'] as Map<String, dynamic>);
+  }
 }
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
@@ -129,7 +137,7 @@ class AnalyticsRepository {
   final ApiClient _api;
 
   Future<AnalyticsSummary> summary({String? from, String? to}) async {
-    final res = await _api.get('/api/analytics/summary', query: {
+    final res = await _api.get('/api/analytics', query: {
       if (from != null) 'from': from,
       if (to != null) 'to': to,
     });

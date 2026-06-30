@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/currency.dart';
 import '../../core/theme/folio_theme.dart';
 import '../../shared/widgets/balance_hero.dart';
 import '../../shared/widgets/charts.dart';
@@ -20,8 +21,8 @@ class HomeScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider);
 
     final currency = profile.maybeWhen(
-      data: (p) => _currencySymbol(p.currency),
-      orElse: () => '\$',
+      data: (p) => currencySymbol(p.currency),
+      orElse: () => r'$',
     );
 
     return FolioShell(
@@ -141,13 +142,5 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _currencySymbol(String code) {
-    const symbols = {
-      'USD': '\$', 'EUR': '€', 'GBP': '£', 'INR': '₹',
-      'JPY': '¥', 'CAD': 'C\$', 'AUD': 'A\$',
-    };
-    return symbols[code] ?? '\$';
   }
 }

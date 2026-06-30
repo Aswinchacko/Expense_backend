@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/currency.dart';
 import '../../core/theme/folio_theme.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/folio_shell.dart';
@@ -14,6 +15,11 @@ class InsightsScreen extends ConsumerWidget {
     final month = ref.watch(selectedMonthProvider);
     final analytics = ref.watch(analyticsProvider(month));
     final budgets = ref.watch(budgetsProvider);
+    final profile = ref.watch(profileProvider);
+    final currency = profile.maybeWhen(
+      data: (p) => currencySymbol(p.currency),
+      orElse: () => r'$',
+    );
 
     return FolioShell(
       currentIndex: 2,
@@ -41,6 +47,7 @@ class InsightsScreen extends ConsumerWidget {
                           amount: c.total,
                           percent: c.percent,
                           icon: c.icon,
+                          currency: currency,
                         )),
                 ],
               ),
@@ -61,6 +68,7 @@ class InsightsScreen extends ConsumerWidget {
                         spent: b.spent,
                         total: b.amount,
                         percent: b.spentPercent,
+                        currency: currency,
                       )).toList(),
                 );
               },

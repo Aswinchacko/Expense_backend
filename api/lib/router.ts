@@ -461,7 +461,7 @@ export async function routeRequest(req: VercelRequest, res: VercelResponse): Pro
 
   if (route === 'profile') return handleProfile(req, res);
 
-  if (route === 'analytics/summary' && method === 'GET') return handleAnalyticsSummary(req, res);
+  if (route === 'analytics' && method === 'GET') return handleAnalyticsSummary(req, res);
 
   if (route === 'receipts/upload' && method === 'POST') return handleReceiptUpload(req, res);
 

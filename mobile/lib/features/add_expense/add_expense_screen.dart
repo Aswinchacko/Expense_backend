@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/currency.dart';
 import '../../core/theme/folio_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/input_widgets.dart';
@@ -63,6 +64,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             type: _isExpense ? TransactionType.expense : TransactionType.income,
             date: DateFormat('yyyy-MM-dd').format(_selectedDate),
             merchant: _category!.name,
+            currency: ref.read(profileProvider).valueOrNull?.currency,
           );
 
       ref.invalidate(expensesProvider(ref.read(selectedMonthProvider)));
@@ -97,6 +99,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final formatted = NumberFormat('#,##0.00').format(_amount);
+    final currency = ref.watch(profileProvider).maybeWhen(
+          data: (p) => currencySymbol(p.currency),
+          orElse: () => r'$',
+        );
 
     return Scaffold(
       appBar: AppBar(
@@ -117,7 +123,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 onSelected: (d) => setState(() => _selectedDate = d),
               ),
               const SizedBox(height: 32),
-              Text('\$$formatted', style: FolioTheme.amountStyle(context, size: 48)),
+              Text('$currency$formatted', style: FolioTheme.amountStyle(context, size: 48)),
               const SizedBox(height: 16),
               if (_category != null)
                 CategoryPill(
