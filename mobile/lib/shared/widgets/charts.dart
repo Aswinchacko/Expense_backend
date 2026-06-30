@@ -1,60 +1,78 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/folio_theme.dart';
 import '../../shared/models/models.dart';
+import 'category_icon.dart';
 
-class WaveTrendChart extends StatelessWidget {
-  const WaveTrendChart({super.key, required this.points, this.height = 120});
+/// Lightweight sparkline — no fl_chart, repaints in one pass.
+class SparklineChart extends StatelessWidget {
+  const SparklineChart({super.key, required this.points, this.height = 120});
 
   final List<TrendPoint> points;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    if (points.isEmpty) {
-      return SizedBox(height: height);
-    }
-
-    final spots = points.asMap().entries.map((e) {
-      return FlSpot(e.key.toDouble(), e.value.amount);
-    }).toList();
-
-    final maxY = points.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
-    final chartMax = (maxY > 0 ? maxY * 1.2 : 100).toDouble();
-
-    return SizedBox(
-      height: height,
-      child: LineChart(
-        LineChartData(
-          gridData: const FlGridData(show: false),
-          titlesData: const FlTitlesData(show: false),
-          borderData: FlBorderData(show: false),
-          minX: 0,
-          maxX: (points.length - 1).toDouble(),
-          minY: 0,
-          maxY: chartMax,
-          lineTouchData: const LineTouchData(enabled: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              curveSmoothness: 0.35,
-              color: FolioColors.foreground,
-              barWidth: 2,
-              isStrokeCapRound: true,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                color: FolioColors.foreground.withValues(alpha: 0.04),
-              ),
-            ),
-          ],
+    if (points.isEmpty) return SizedBox(height: height);
+    return RepaintBoundary(
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _SparklinePainter(points: points),
         ),
-        duration: const Duration(milliseconds: 300),
       ),
     );
   }
+}
+
+class _SparklinePainter extends CustomPainter {
+  _SparklinePainter({required this.points});
+
+  final List<TrendPoint> points;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+
+    final maxY = points.fold<double>(0, (m, p) => p.amount > m ? p.amount : m);
+    final chartMax = maxY > 0 ? maxY * 1.15 : 1.0;
+    final dx = size.width / (points.length - 1);
+
+    final path = Path();
+    for (var i = 0; i < points.length; i++) {
+      final x = i * dx;
+      final y = size.height - (points[i].amount / chartMax) * size.height;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        final prevX = (i - 1) * dx;
+        final prevY = size.height - (points[i - 1].amount / chartMax) * size.height;
+        final cx = (prevX + x) / 2;
+        path.cubicTo(cx, prevY, cx, y, x, y);
+      }
+    }
+
+    final fill = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawPath(fill, Paint()..color = FolioColors.foreground.withValues(alpha: 0.06));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = FolioColors.foreground
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SparklinePainter old) => old.points != points;
 }
 
 class MonthScrubber extends StatelessWidget {
@@ -86,15 +104,12 @@ class MonthScrubber extends StatelessWidget {
           final isActive = selected.month == i + 1 && selected.year == y;
           return GestureDetector(
             onTap: () => onSelected(month),
+            behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Text(
                 _months[i],
-                style: FolioTheme.labelStyle(context, size: 13).copyWith(
-                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w400,
-                  decoration: isActive ? TextDecoration.underline : null,
-                  decorationThickness: 2,
-                ),
+                style: isActive ? FolioText.label13Bold : FolioText.label13,
               ),
             ),
           );
@@ -129,12 +144,12 @@ class CategoryBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
+              CategoryIcon(icon: icon, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text(label, style: FolioTheme.labelStyle(context))),
-              Text('$currency${amount.toStringAsFixed(0)}', style: FolioTheme.labelStyle(context)),
+              Expanded(child: Text(label, style: FolioText.label14)),
+              Text('$currency${amount.toStringAsFixed(0)}', style: FolioText.label14),
               const SizedBox(width: 8),
-              Text('$percent%', style: FolioTheme.metaStyle(context)),
+              Text('$percent%', style: FolioText.meta12),
             ],
           ),
           const SizedBox(height: 8),
@@ -179,10 +194,10 @@ class BudgetBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(name, style: FolioTheme.labelStyle(context)),
+              Text(name, style: FolioText.label14),
               Text(
                 '$currency${spent.toStringAsFixed(0)} / $currency${total.toStringAsFixed(0)}',
-                style: FolioTheme.metaStyle(context, size: 12),
+                style: FolioText.meta12,
               ),
             ],
           ),

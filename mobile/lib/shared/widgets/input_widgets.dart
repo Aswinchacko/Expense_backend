@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/theme/folio_theme.dart';
+import 'category_icon.dart';
 
 class PillToggle extends StatelessWidget {
   const PillToggle({
@@ -13,25 +15,47 @@ class PillToggle extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
+  Widget build(BuildContext context) => PremiumTypeToggle(isExpense: isExpense, onChanged: onChanged);
+}
+
+class PremiumTypeToggle extends StatelessWidget {
+  const PremiumTypeToggle({
+    super.key,
+    required this.isExpense,
+    required this.onChanged,
+  });
+
+  final bool isExpense;
+  final ValueChanged<bool> onChanged;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: FolioColors.surfaceMuted,
         borderRadius: BorderRadius.circular(FolioRadii.pill),
+        border: Border.all(color: FolioColors.border),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _PillOption(
-            label: 'expenses',
-            selected: isExpense,
-            onTap: () => onChanged(true),
+          Expanded(
+            child: _TypeChip(
+              label: 'expense',
+              icon: Icons.arrow_downward_rounded,
+              selected: isExpense,
+              onTap: () => onChanged(true),
+            ),
           ),
-          _PillOption(
-            label: 'income',
-            selected: !isExpense,
-            onTap: () => onChanged(false),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _TypeChip(
+              label: 'income',
+              icon: Icons.arrow_upward_rounded,
+              selected: !isExpense,
+              highlight: true,
+              onTap: () => onChanged(false),
+            ),
           ),
         ],
       ),
@@ -39,35 +63,142 @@ class PillToggle extends StatelessWidget {
   }
 }
 
-class _PillOption extends StatelessWidget {
-  const _PillOption({
+class _TypeChip extends StatelessWidget {
+  const _TypeChip({
     required this.label,
+    required this.icon,
     required this.selected,
     required this.onTap,
+    this.highlight = false,
   });
 
   final String label;
+  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
+    final bg = selected
+        ? (highlight ? FolioColors.foreground : FolioColors.foreground)
+        : Colors.transparent;
+    final fg = selected ? FolioColors.background : FolioColors.foreground;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? FolioColors.foreground : Colors.transparent,
+          color: bg,
           borderRadius: BorderRadius.circular(FolioRadii.pill),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: FolioColors.foreground.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
-        child: Text(
-          label,
-          style: FolioTheme.labelStyle(context, size: 13).copyWith(
-            color: selected ? FolioColors.background : FolioColors.foreground,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: fg),
+            const SizedBox(width: 6),
+            Text(label, style: FolioText.label13.copyWith(color: fg, fontWeight: FontWeight.w700)),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class MonthDatePicker extends StatelessWidget {
+  const MonthDatePicker({
+    super.key,
+    required this.month,
+    required this.selected,
+    required this.onMonthChanged,
+    required this.onDateChanged,
+  });
+
+  final DateTime month;
+  final DateTime selected;
+  final ValueChanged<DateTime> onMonthChanged;
+  final ValueChanged<DateTime> onDateChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              onPressed: () => onMonthChanged(DateTime(month.year, month.month - 1)),
+              icon: const Icon(Icons.chevron_left),
+            ),
+            Text(
+              DateFormat('MMMM yyyy').format(month),
+              style: FolioText.label15.copyWith(fontWeight: FontWeight.w700),
+            ),
+            IconButton(
+              onPressed: () => onMonthChanged(DateTime(month.year, month.month + 1)),
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 72,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: daysInMonth,
+            itemBuilder: (context, i) {
+              final day = DateTime(month.year, month.month, i + 1);
+              final isSelected = day.year == selected.year &&
+                  day.month == selected.month &&
+                  day.day == selected.day;
+              final weekday = DateFormat('EEE').format(day).toLowerCase();
+              return GestureDetector(
+                onTap: () => onDateChanged(day),
+                child: Container(
+                  width: 52,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? FolioColors.foreground : FolioColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isSelected ? FolioColors.foreground : FolioColors.border),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${day.day}',
+                        style: FolioText.label16.copyWith(
+                          color: isSelected ? FolioColors.background : FolioColors.foreground,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        weekday,
+                        style: FolioText.meta12.copyWith(
+                          color: isSelected
+                              ? FolioColors.background.withValues(alpha: 0.75)
+                              : FolioColors.foreground.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -97,7 +228,7 @@ class CategoryPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 16)),
+            CategoryIcon(icon: icon, size: 16, color: FolioColors.background),
             const SizedBox(width: 8),
             Text(
               label,

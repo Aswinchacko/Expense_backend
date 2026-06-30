@@ -5,7 +5,9 @@ class AuthService {
   static final instance = AuthService._();
 
   static const _tokenKey = 'folio_jwt';
-  final _storage = const FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   String? _token;
 

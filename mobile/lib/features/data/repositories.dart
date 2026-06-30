@@ -100,6 +100,26 @@ class ExpenseRepository {
   }
 
   Future<void> delete(String id) => _api.delete('/api/expenses/$id');
+
+  Future<Expense> update({
+    required String id,
+    String? categoryId,
+    double? amount,
+    TransactionType? type,
+    String? date,
+    String? currency,
+    String? merchant,
+  }) async {
+    final res = await _api.patch('/api/expenses/$id', body: {
+      if (categoryId != null) 'category_id': categoryId,
+      if (amount != null) 'amount': amount,
+      if (type != null) 'type': type == TransactionType.income ? 'income' : 'expense',
+      if (date != null) 'date': date,
+      if (currency != null) 'currency': currency,
+      if (merchant != null) 'merchant': merchant,
+    });
+    return Expense.fromJson(res['data'] as Map<String, dynamic>);
+  }
 }
 
 final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
@@ -118,13 +138,27 @@ class CategoryRepository {
         .toList();
   }
 
-  Future<Category> create({required String name, String icon = '📦'}) async {
+  Future<Category> create({required String name, String icon = 'ic:category'}) async {
     final res = await _api.post('/api/categories', body: {
       'name': name,
       'icon': icon,
     });
     return Category.fromJson(res['data'] as Map<String, dynamic>);
   }
+
+  Future<Category> update({
+    required String id,
+    String? name,
+    String? icon,
+  }) async {
+    final res = await _api.patch('/api/categories/$id', body: {
+      if (name != null) 'name': name,
+      if (icon != null) 'icon': icon,
+    });
+    return Category.fromJson(res['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> delete(String id) => _api.delete('/api/categories/$id');
 }
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {

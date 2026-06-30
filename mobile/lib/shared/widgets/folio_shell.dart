@@ -1,32 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/folio_theme.dart';
+import '../../features/data/providers.dart';
 
-class FolioShell extends StatelessWidget {
+class FolioShell extends ConsumerWidget {
   const FolioShell({
     super.key,
-    required this.child,
-    required this.currentIndex,
+    required this.navigationShell,
   });
 
-  final Widget child;
-  final int currentIndex;
+  final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      body: child,
+      body: navigationShell,
       extendBody: true,
-      bottomNavigationBar: FolioBottomBar(currentIndex: currentIndex),
+      bottomNavigationBar: FolioBottomBar(
+        currentIndex: navigationShell.currentIndex,
+        onSelect: (index) {
+          markTabVisited(ref, index);
+          navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          );
+        },
+      ),
     );
   }
 }
 
 class FolioBottomBar extends StatelessWidget {
-  const FolioBottomBar({super.key, required this.currentIndex});
+  const FolioBottomBar({
+    super.key,
+    required this.currentIndex,
+    required this.onSelect,
+  });
 
   final int currentIndex;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -43,23 +57,23 @@ class FolioBottomBar extends StatelessWidget {
           _NavIcon(
             icon: Icons.menu_book_outlined,
             selected: currentIndex == 0,
-            onTap: () => context.go('/home'),
+            onTap: () => onSelect(0),
           ),
           _NavIcon(
             icon: Icons.grid_view_rounded,
             selected: currentIndex == 1,
-            onTap: () => context.go('/categories'),
+            onTap: () => onSelect(1),
           ),
           _FabButton(onTap: () => context.push('/add')),
           _NavIcon(
             icon: Icons.show_chart_outlined,
             selected: currentIndex == 2,
-            onTap: () => context.go('/insights'),
+            onTap: () => onSelect(2),
           ),
           _NavIcon(
             icon: Icons.settings_outlined,
             selected: currentIndex == 3,
-            onTap: () => context.go('/settings'),
+            onTap: () => onSelect(3),
           ),
         ],
       ),
@@ -91,37 +105,23 @@ class _NavIcon extends StatelessWidget {
   }
 }
 
-class _FabButton extends StatefulWidget {
+class _FabButton extends StatelessWidget {
   const _FabButton({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
-  State<_FabButton> createState() => _FabButtonState();
-}
-
-class _FabButtonState extends State<_FabButton> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: Container(
-          width: 52,
-          height: 52,
-          decoration: const BoxDecoration(
-            color: FolioColors.background,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.add, color: FolioColors.foreground, size: 28),
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: const BoxDecoration(
+          color: FolioColors.background,
+          shape: BoxShape.circle,
         ),
+        child: const Icon(Icons.add, color: FolioColors.foreground, size: 28),
       ),
     );
   }

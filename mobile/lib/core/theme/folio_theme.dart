@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 abstract final class FolioColors {
   static const background = Color(0xFFFFFFFF);
@@ -14,9 +13,71 @@ abstract final class FolioRadii {
   static const card = 24.0;
 }
 
+/// Cached text styles — avoid allocating on every build.
+abstract final class FolioText {
+  static const amount48 = TextStyle(
+    fontSize: 48,
+    fontWeight: FontWeight.w800,
+    color: FolioColors.foreground,
+    letterSpacing: -1,
+  );
+
+  static const amount44 = TextStyle(
+    fontSize: 44,
+    fontWeight: FontWeight.w800,
+    color: FolioColors.foreground,
+    letterSpacing: -1,
+  );
+
+  static const amount28 = TextStyle(
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    color: FolioColors.foreground,
+    letterSpacing: -0.5,
+  );
+
+  static const label16 = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    color: FolioColors.foreground,
+  );
+
+  static const label15 = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    color: FolioColors.foreground,
+  );
+
+  static const label14 = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: FolioColors.foreground,
+  );
+
+  static const label13 = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: FolioColors.foreground,
+  );
+
+  static const label13Bold = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    color: FolioColors.foreground,
+    decoration: TextDecoration.underline,
+    decorationThickness: 2,
+  );
+
+  static const meta12 = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: Color(0x80000000),
+  );
+}
+
 class FolioTheme {
   static ThemeData get light {
-    final base = ThemeData(
+    return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: FolioColors.background,
@@ -29,13 +90,6 @@ class FolioTheme {
       dividerColor: FolioColors.border,
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
-    );
-
-    return base.copyWith(
-      textTheme: GoogleFonts.outfitTextTheme(base.textTheme).apply(
-        bodyColor: FolioColors.foreground,
-        displayColor: FolioColors.foreground,
-      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: FolioColors.background,
         foregroundColor: FolioColors.foreground,
@@ -66,27 +120,21 @@ class FolioTheme {
   }
 
   static TextStyle amountStyle(BuildContext context, {double size = 48}) {
-    return GoogleFonts.outfit(
-      fontSize: size,
-      fontWeight: FontWeight.w800,
-      color: FolioColors.foreground,
-      letterSpacing: -1,
-    );
+    if (size == 48) return FolioText.amount48;
+    if (size == 44) return FolioText.amount44;
+    if (size == 28) return FolioText.amount28;
+    return FolioText.amount48.copyWith(fontSize: size);
   }
 
   static TextStyle labelStyle(BuildContext context, {double size = 14}) {
-    return GoogleFonts.outfit(
-      fontSize: size,
-      fontWeight: FontWeight.w500,
-      color: FolioColors.foreground,
-    );
+    if (size == 16) return FolioText.label16;
+    if (size == 15) return FolioText.label15;
+    if (size == 14) return FolioText.label14;
+    if (size == 13) return FolioText.label13;
+    return FolioText.label14.copyWith(fontSize: size);
   }
 
   static TextStyle metaStyle(BuildContext context, {double size = 12}) {
-    return GoogleFonts.outfit(
-      fontSize: size,
-      fontWeight: FontWeight.w400,
-      color: FolioColors.foreground.withValues(alpha: 0.5),
-    );
+    return size == 12 ? FolioText.meta12 : FolioText.meta12.copyWith(fontSize: size);
   }
 }

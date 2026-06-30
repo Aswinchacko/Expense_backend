@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/env.dart';
 import '../../core/theme/folio_theme.dart';
 import '../../shared/widgets/folio_brand.dart';
+import '../data/providers.dart';
 import '../data/repositories.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {

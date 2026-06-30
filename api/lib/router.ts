@@ -202,7 +202,7 @@ export async function handleCategories(req: VercelRequest, res: VercelResponse) 
         _id: randomUUID(),
         userId: authedReq.user.id,
         name,
-        icon: icon ?? '📦',
+        icon: icon ?? 'ic:category',
         createdAt: new Date(),
       };
       await categories.insertOne(doc);
@@ -210,6 +210,51 @@ export async function handleCategories(req: VercelRequest, res: VercelResponse) 
     });
   }
   res.setHeader('Allow', 'GET, POST');
+  res.status(405).json({ error: 'Method not allowed' });
+}
+
+export async function handleCategoryById(req: VercelRequest, res: VercelResponse, id: string) {
+  if (req.method === 'PATCH') {
+    return withAuth(req, res, async (authedReq, authedRes) => {
+      const categories = await getCollection<CategoryDoc>('categories');
+      const existing = await categories.findOne({ _id: id });
+      if (!existing) {
+        authedRes.status(404).json({ error: 'Not found' });
+        return;
+      }
+      if (existing.userId !== authedReq.user.id) {
+        authedRes.status(403).json({ error: 'Cannot edit default categories' });
+        return;
+      }
+      const { name, icon } = authedReq.body ?? {};
+      const updates: Record<string, unknown> = {};
+      if (name !== undefined) updates.name = name;
+      if (icon !== undefined) updates.icon = icon;
+      const result = await categories.findOneAndUpdate(
+        { _id: id, userId: authedReq.user.id },
+        { $set: updates },
+        { returnDocument: 'after' }
+      );
+      authedRes.status(200).json({ data: serializeCategory(result!) });
+    });
+  }
+  if (req.method === 'DELETE') {
+    return withAuth(req, res, async (authedReq, authedRes) => {
+      const categories = await getCollection<CategoryDoc>('categories');
+      const existing = await categories.findOne({ _id: id });
+      if (!existing) {
+        authedRes.status(404).json({ error: 'Not found' });
+        return;
+      }
+      if (existing.userId !== authedReq.user.id) {
+        authedRes.status(403).json({ error: 'Cannot delete default categories' });
+        return;
+      }
+      await categories.deleteOne({ _id: id, userId: authedReq.user.id });
+      authedRes.status(204).end();
+    });
+  }
+  res.setHeader('Allow', 'PATCH, DELETE');
   res.status(405).json({ error: 'Method not allowed' });
 }
 
@@ -454,6 +499,7 @@ export async function routeRequest(req: VercelRequest, res: VercelResponse): Pro
   if (path[0] === 'expenses' && path.length === 2) return handleExpenseById(req, res, path[1]);
 
   if (route === 'categories') return handleCategories(req, res);
+  if (path[0] === 'categories' && path.length === 2) return handleCategoryById(req, res, path[1]);
 
   if (route === 'budgets' && method === 'GET') return handleBudgetsList(req, res);
   if (route === 'budgets' && method === 'POST') return handleBudgetsCreate(req, res);

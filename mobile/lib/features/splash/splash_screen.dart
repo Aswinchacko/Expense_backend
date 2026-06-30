@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../shared/widgets/folio_brand.dart';
 import '../auth/auth_providers.dart';
+import '../data/providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -22,9 +22,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (!mounted) return;
-
+    // Token already loaded in main(); don't block UI on a second secure-storage read.
     final prefs = await SharedPreferences.getInstance();
     final onboardingDone = prefs.getBool('onboarding_done') ?? false;
     final isAuth = ref.read(isAuthenticatedProvider);
@@ -41,19 +39,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const FolioMonogram(size: 80)
-                .animate()
-                .fadeIn(duration: 600.ms)
-                .scale(begin: const Offset(0.8, 0.8)),
-            const SizedBox(height: 32),
-            const FolioWordmark()
-                .animate()
-                .fadeIn(delay: 300.ms, duration: 500.ms),
+            FolioMonogram(size: 80),
+            SizedBox(height: 32),
+            FolioWordmark(),
           ],
         ),
       ),

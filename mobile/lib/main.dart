@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/app_lock.dart';
 import 'core/auth/auth_service.dart';
+import 'core/folio_messenger.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/folio_theme.dart';
 import 'features/auth/auth_providers.dart';
@@ -21,11 +23,14 @@ class FolioApp extends ConsumerWidget {
     ref.watch(authInitProvider);
     final router = ref.watch(routerProvider);
 
-    return MaterialApp.router(
-      title: 'folio',
-      debugShowCheckedModeBanner: false,
-      theme: FolioTheme.light,
-      routerConfig: router,
+    return AppLockGate(
+      child: MaterialApp.router(
+        title: 'folio',
+        debugShowCheckedModeBanner: false,
+        scaffoldMessengerKey: rootScaffoldMessengerKey,
+        theme: FolioTheme.light,
+        routerConfig: router,
+      ),
     );
   }
 }

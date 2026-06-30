@@ -16,9 +16,11 @@ class Category {
   factory Category.fromJson(Map<String, dynamic> json) => Category(
         id: json['id'] as String,
         name: json['name'] as String,
-        icon: json['icon'] as String? ?? '📦',
+        icon: json['icon'] as String? ?? 'ic:category',
         userId: json['user_id'] as String?,
       );
+
+  bool get isCustom => userId != null;
 }
 
 class Expense {
@@ -169,15 +171,28 @@ class Profile {
     required this.id,
     required this.currency,
     this.displayName,
+    this.email,
   });
 
   final String id;
   final String currency;
   final String? displayName;
+  final String? email;
+
+  String get firstName {
+    if (displayName != null && displayName!.trim().isNotEmpty) {
+      return displayName!.trim().split(' ').first;
+    }
+    if (email != null && email!.contains('@')) {
+      return email!.split('@').first;
+    }
+    return 'there';
+  }
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
         id: json['id'] as String,
         currency: json['currency'] as String? ?? 'USD',
         displayName: json['display_name'] as String?,
+        email: json['email'] as String?,
       );
 }
