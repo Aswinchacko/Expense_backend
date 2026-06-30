@@ -3,7 +3,7 @@ const path = require('path');
 
 const src = path.join(__dirname, '..', 'landing');
 const dest = path.join(__dirname, '..', 'public');
-const files = ['index.html', 'styles.css'];
+const files = ['index.html', 'styles.css', 'privacy.html', 'terms.html', 'legal.css'];
 
 if (!fs.existsSync(src)) {
   console.warn('landing/ not found — using committed public/ files');
