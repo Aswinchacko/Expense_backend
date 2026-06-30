@@ -7,7 +7,6 @@ node_modules/**
 **/ios/**
 **/android/.gradle/**
 **/android/app/build/**
-**/*.apk
-!public/downloads/*.apk
-**/*.aab
-**/*.ipa
+mobile/**/*.apk
+mobile/**/*.aab
+mobile/**/*.ipa
