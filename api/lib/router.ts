@@ -41,7 +41,7 @@ function parsePath(req: VercelRequest): string[] {
   return [];
 }
 
-async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
+export async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
   const { id_token } = req.body ?? {};
   if (!id_token) {
     res.status(400).json({ error: 'id_token required' });
