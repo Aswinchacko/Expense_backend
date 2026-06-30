@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+mobile/.dart_tool/
+mobile/build/
+mobile/.pub-cache/
+
+# Env
+.env
+.env.local
+.env*.local
+api/.env
+mobile/.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
+
+# Flutter
+mobile/.flutter-plugins-dependencies
+mobile/**/*.g.dart
+mobile/**/*.freezed.dart

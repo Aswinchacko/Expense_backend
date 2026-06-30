@@ -1,0 +1,31 @@
+name: folio
+description: folio — your minimal expense tracker
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  dio: ^5.8.0+1
+  flutter_riverpod: ^2.6.1
+  go_router: ^15.1.2
+  fl_chart: ^0.70.2
+  flutter_animate: ^4.5.2
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.17
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.4
+  intl: ^0.20.2
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
