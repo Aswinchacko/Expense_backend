@@ -5,6 +5,8 @@
   "scripts": {
     "dev:api": "vercel dev",
     "build:api": "tsc --project api/tsconfig.json",
+    "build:landing": "node scripts/copy-landing.js",
+    "build": "npm run build:api && npm run build:landing",
     "typecheck": "tsc --project api/tsconfig.json --noEmit"
   },
   "dependencies": {

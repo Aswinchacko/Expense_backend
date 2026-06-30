@@ -275,15 +275,15 @@ async function updateCategoryById(
     authedRes.status(404).json({ error: 'Not found' });
     return;
   }
-  if (existing.userId !== authedReq.user.id) {
-    authedRes.status(403).json({ error: 'Cannot edit default categories' });
+  if (existing.userId != null && existing.userId !== authedReq.user.id) {
+    authedRes.status(403).json({ error: 'Cannot edit this category' });
     return;
   }
   const updates: Record<string, unknown> = {};
   if (body.name !== undefined) updates.name = body.name;
   if (body.icon !== undefined) updates.icon = body.icon;
   const result = await categories.findOneAndUpdate(
-    { _id: id, userId: authedReq.user.id },
+    { _id: id },
     { $set: updates },
     { returnDocument: 'after' }
   );
