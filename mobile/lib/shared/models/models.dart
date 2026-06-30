@@ -109,6 +109,7 @@ class AnalyticsSummary {
     required this.expenseTotal,
     required this.byCategory,
     required this.trend,
+    this.dailySpend = const [],
   });
 
   final double balance;
@@ -116,6 +117,7 @@ class AnalyticsSummary {
   final double expenseTotal;
   final List<CategoryBreakdown> byCategory;
   final List<TrendPoint> trend;
+  final List<TrendPoint> dailySpend;
 
   factory AnalyticsSummary.fromJson(Map<String, dynamic> json) => AnalyticsSummary(
         balance: (json['balance'] as num).toDouble(),

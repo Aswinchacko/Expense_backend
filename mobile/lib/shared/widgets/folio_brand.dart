@@ -57,13 +57,13 @@ class FolioWordmark extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'folio',
+          'Folio',
           style: FolioTheme.amountStyle(context, size: 40),
         ),
         if (showTagline) ...[
           const SizedBox(height: 4),
           Text(
-            'your minimal expense tracker',
+            'Your minimal expense tracker',
             style: FolioTheme.metaStyle(context, size: 13),
           ),
         ],

@@ -1,8 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/folio_theme.dart';
 import 'category_icon.dart';
+
+/// Converts stored amount to a clean keypad string (200.0 → "200").
+String amountInputFromDouble(double value) {
+  if (value == value.truncateToDouble()) {
+    return value.truncate().toString();
+  }
+  return value.toString();
+}
+
+String formatAmountDisplay(String amountStr, String currency) {
+  if (amountStr.isEmpty) return '${currency}0.00';
+  if (amountStr == '.' || amountStr.endsWith('.')) {
+    return '$currency$amountStr';
+  }
+  final parsed = double.tryParse(amountStr);
+  if (parsed == null) return '$currency$amountStr';
+  return '$currency${NumberFormat('#,##0.00').format(parsed)}';
+}
 
 class PillToggle extends StatelessWidget {
   const PillToggle({
@@ -312,11 +331,13 @@ class FolioKeypad extends StatelessWidget {
     required this.onDigit,
     required this.onBackspace,
     required this.onConfirm,
+    this.showConfirmButton = true,
   });
 
   final ValueChanged<String> onDigit;
   final VoidCallback onBackspace;
   final VoidCallback onConfirm;
+  final bool showConfirmButton;
 
   @override
   Widget build(BuildContext context) {
@@ -344,18 +365,20 @@ class FolioKeypad extends StatelessWidget {
                 );
               }).toList(),
             )),
-        const SizedBox(height: 8),
-        _KeyButton(
-          label: '✓',
-          onTap: onConfirm,
-          filled: true,
-        ),
+        if (showConfirmButton) ...[
+          const SizedBox(height: 8),
+          _KeyButton(
+            label: '✓',
+            onTap: onConfirm,
+            filled: true,
+          ),
+        ],
       ],
     );
   }
 }
 
-class _KeyButton extends StatelessWidget {
+class _KeyButton extends StatefulWidget {
   const _KeyButton({
     required this.label,
     required this.onTap,
@@ -367,23 +390,55 @@ class _KeyButton extends StatelessWidget {
   final bool filled;
 
   @override
+  State<_KeyButton> createState() => _KeyButtonState();
+}
+
+class _KeyButtonState extends State<_KeyButton> {
+  bool _pressed = false;
+
+  void _handleTap() {
+    HapticFeedback.lightImpact();
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: filled ? double.infinity : 72,
-        height: 56,
-        margin: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: filled ? FolioColors.foreground : FolioColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(filled ? FolioRadii.card : 28),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: FolioTheme.amountStyle(context, size: filled ? 24 : 22).copyWith(
-            color: filled ? FolioColors.background : FolioColors.foreground,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: _handleTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.9 : 1,
+        duration: const Duration(milliseconds: 80),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          width: widget.filled ? double.infinity : 72,
+          height: 56,
+          margin: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: _pressed
+                ? (widget.filled
+                    ? FolioColors.foreground.withValues(alpha: 0.75)
+                    : FolioColors.border)
+                : (widget.filled ? FolioColors.foreground : FolioColors.surfaceMuted),
+            borderRadius: BorderRadius.circular(widget.filled ? FolioRadii.card : 28),
           ),
+          alignment: Alignment.center,
+          child: widget.label == '⌫'
+              ? Icon(
+                  Icons.backspace_outlined,
+                  size: 22,
+                  color: widget.filled ? FolioColors.background : FolioColors.foreground,
+                )
+              : Text(
+                  widget.label,
+                  style: FolioTheme.amountStyle(context, size: widget.filled ? 24 : 22).copyWith(
+                    color: widget.filled ? FolioColors.background : FolioColors.foreground,
+                  ),
+                ),
         ),
       ),
     );

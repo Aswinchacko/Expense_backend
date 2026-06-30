@@ -148,8 +148,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final formatted = NumberFormat('#,##0.00').format(_amount);
     final currency = ref.watch(currencySymbolProvider);
+    final formatted = formatAmountDisplay(_amountStr, currency);
 
     return Scaffold(
       appBar: AppBar(
@@ -172,7 +172,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 onDateChanged: (d) => setState(() => _selectedDate = d),
               ),
               const SizedBox(height: 28),
-              Text('$currency$formatted', style: FolioTheme.amountStyle(context, size: 48)),
+              Text(formatted, style: FolioTheme.amountStyle(context, size: 48)),
               const SizedBox(height: 16),
               if (_category != null)
                 CategoryPill(icon: _category!.icon, label: _category!.name, onTap: _pickCategory)

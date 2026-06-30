@@ -8,19 +8,6 @@ import '../auth/auth_providers.dart';
 import 'analytics_local.dart';
 import 'repositories.dart';
 
-final visitedTabsProvider = StateProvider<Set<int>>((ref) => {0});
-
-void markTabVisited(WidgetRef ref, int index) {
-  final current = ref.read(visitedTabsProvider);
-  if (!current.contains(index)) {
-    ref.read(visitedTabsProvider.notifier).state = {...current, index};
-  }
-}
-
-bool isTabVisited(WidgetRef ref, int index) {
-  return ref.watch(visitedTabsProvider).contains(index);
-}
-
 final selectedMonthProvider = StateProvider<DateTime>((ref) {
   final now = DateTime.now();
   return DateTime(now.year, now.month);
@@ -33,7 +20,15 @@ void _keepAliveWhileAuthed(Ref ref) {
   });
 }
 
-/// Sync currency from disk — no network wait for UI.
+/// Warm network caches once the shell mounts so tabs don't spin on first open.
+void prefetchAppData(WidgetRef ref) {
+  ref.read(categoriesProvider);
+  ref.read(profileProvider);
+  final month = ref.read(selectedMonthProvider);
+  ref.read(expensesProvider(month));
+  ref.read(budgetsProvider);
+}
+
 final currencyCodeProvider = StateNotifierProvider<CurrencyNotifier, String>((ref) {
   return CurrencyNotifier();
 });
@@ -60,10 +55,64 @@ final currencySymbolProvider = Provider<String>((ref) {
   return currencySymbol(ref.watch(currencyCodeProvider));
 });
 
-final categoriesProvider = FutureProvider<List<Category>>((ref) async {
-  _keepAliveWhileAuthed(ref);
-  return ref.read(categoryRepositoryProvider).list();
-});
+class CategoriesNotifier extends AsyncNotifier<List<Category>> {
+  @override
+  Future<List<Category>> build() async {
+    _keepAliveWhileAuthed(ref);
+    return ref.read(categoryRepositoryProvider).list();
+  }
+
+  Future<void> createOptimistic({required String name, required String icon}) async {
+    final tempId = 'local-cat-${DateTime.now().microsecondsSinceEpoch}';
+    final temp = Category(id: tempId, name: name, icon: icon, userId: 'pending');
+    final previous = state;
+    state = AsyncData([...state.valueOrNull ?? [], temp]);
+    try {
+      final created = await ref.read(categoryRepositoryProvider).create(name: name, icon: icon);
+      state = AsyncData(
+        (state.valueOrNull ?? []).map((c) => c.id == tempId ? created : c).toList(),
+      );
+    } catch (e) {
+      state = previous;
+      rethrow;
+    }
+  }
+
+  Future<void> updateOptimistic({
+    required String id,
+    required String name,
+    required String icon,
+  }) async {
+    final previous = state;
+    state = AsyncData(
+      (state.valueOrNull ?? [])
+          .map((c) => c.id == id ? Category(id: id, name: name, icon: icon, userId: c.userId) : c)
+          .toList(),
+    );
+    try {
+      final updated = await ref.read(categoryRepositoryProvider).update(id: id, name: name, icon: icon);
+      state = AsyncData(
+        (state.valueOrNull ?? []).map((c) => c.id == id ? updated : c).toList(),
+      );
+    } catch (e) {
+      state = previous;
+      rethrow;
+    }
+  }
+
+  Future<void> deleteOptimistic(String id) async {
+    final previous = state;
+    state = AsyncData((state.valueOrNull ?? []).where((c) => c.id != id).toList());
+    try {
+      await ref.read(categoryRepositoryProvider).delete(id);
+    } catch (e) {
+      state = previous;
+      rethrow;
+    }
+  }
+}
+
+final categoriesProvider = AsyncNotifierProvider<CategoriesNotifier, List<Category>>(CategoriesNotifier.new);
 
 final expensesProvider = FutureProvider.family<List<Expense>, DateTime>((ref, month) async {
   _keepAliveWhileAuthed(ref);
@@ -77,7 +126,7 @@ final expensesProvider = FutureProvider.family<List<Expense>, DateTime>((ref, mo
 });
 
 final analyticsProvider = Provider.family<AsyncValue<AnalyticsSummary>, DateTime>((ref, month) {
-  final base = ref.watch(expensesProvider(month)).whenData(computeAnalytics);
+  final base = ref.watch(expensesProvider(month)).whenData((list) => computeAnalytics(list, month));
   final pending = ref.watch(pendingExpensesProvider);
   if (pending.isEmpty) return base;
   return base.whenData((summary) {
@@ -86,7 +135,7 @@ final analyticsProvider = Provider.family<AsyncValue<AnalyticsSummary>, DateTime
     return computeAnalytics([
       ...?ref.read(expensesProvider(month)).valueOrNull,
       ...monthPending,
-    ]);
+    ], month);
   });
 });
 
@@ -114,7 +163,6 @@ final pendingExpensesProvider =
   return PendingExpensesNotifier();
 });
 
-/// Only fetched when insights tab is opened.
 final budgetsProvider = FutureProvider<List<Budget>>((ref) async {
   _keepAliveWhileAuthed(ref);
   return ref.read(budgetRepositoryProvider).list();

@@ -13,32 +13,48 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../shared/widgets/folio_shell.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+
+/// Keeps one [GoRouter] instance — recreating it remounts the shell and crashes PageView.
+class _AuthRefresh extends ChangeNotifier {
+  _AuthRefresh(this._ref) {
+    _ref.listen<bool>(isAuthenticatedProvider, (_, _) => notifyListeners());
+  }
+
+  final Ref _ref;
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final isAuth = ref.watch(isAuthenticatedProvider);
+  final refresh = _AuthRefresh(ref);
+  ref.onDispose(refresh.dispose);
 
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: refresh,
     redirect: (context, state) {
+      final isAuth = ref.read(isAuthenticatedProvider);
       final onSplash = state.matchedLocation == '/';
       final onAuth = state.matchedLocation == '/auth';
 
       if (onSplash) return null;
-
       if (!isAuth && !onAuth) return '/auth';
       if (isAuth && onAuth) return '/home';
-
       return null;
     },
     routes: [
       GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/auth', builder: (_, _) => const AuthScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (context, state, navigationShell) {
           return FolioShell(navigationShell: navigationShell);
+        },
+        navigatorContainerBuilder: (context, navigationShell, children) {
+          return FolioPager(
+            navigationShell: navigationShell,
+            children: children,
+          );
         },
         branches: [
           StatefulShellBranch(
@@ -76,12 +92,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/add',
         builder: (_, _) => const AddExpenseScreen(),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/pick-category',
         builder: (_, _) => const CategoryPickerScreen(pickerMode: true),
       ),

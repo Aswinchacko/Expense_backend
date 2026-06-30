@@ -41,7 +41,7 @@ class _TransactionEditorState extends ConsumerState<_TransactionEditor> {
   void initState() {
     super.initState();
     _isExpense = widget.expense.type == TransactionType.expense;
-    _amountStr = widget.expense.amount.toString();
+    _amountStr = amountInputFromDouble(widget.expense.amount);
     _selectedDate = DateTime.parse(widget.expense.date);
     _pickerMonth = DateTime(_selectedDate.year, _selectedDate.month);
     _category = widget.expense.category;
@@ -147,7 +147,7 @@ class _TransactionEditorState extends ConsumerState<_TransactionEditor> {
   @override
   Widget build(BuildContext context) {
     final currency = ref.watch(currencySymbolProvider);
-    final formatted = NumberFormat('#,##0.00').format(double.tryParse(_amountStr) ?? 0);
+    final formatted = formatAmountDisplay(_amountStr, currency);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -156,7 +156,12 @@ class _TransactionEditorState extends ConsumerState<_TransactionEditor> {
       expand: false,
       builder: (context, scrollController) => SingleChildScrollView(
         controller: scrollController,
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          16,
+          24,
+          24 + MediaQuery.of(context).padding.bottom + 48,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -171,7 +176,7 @@ class _TransactionEditorState extends ConsumerState<_TransactionEditor> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('edit transaction', style: FolioTheme.labelStyle(context, size: 18)),
+            Text('Edit transaction', style: FolioTheme.labelStyle(context, size: 18)),
             const SizedBox(height: 16),
             PremiumTypeToggle(isExpense: _isExpense, onChanged: (v) => setState(() => _isExpense = v)),
             const SizedBox(height: 16),
@@ -185,7 +190,7 @@ class _TransactionEditorState extends ConsumerState<_TransactionEditor> {
               onDateChanged: (d) => setState(() => _selectedDate = d),
             ),
             const SizedBox(height: 20),
-            Text('$currency$formatted', style: FolioTheme.amountStyle(context, size: 40), textAlign: TextAlign.center),
+            Text(formatted, style: FolioTheme.amountStyle(context, size: 40), textAlign: TextAlign.center),
             const SizedBox(height: 12),
             if (_category != null)
               Center(
@@ -199,17 +204,46 @@ class _TransactionEditorState extends ConsumerState<_TransactionEditor> {
                 ),
               ),
             const SizedBox(height: 16),
-            FolioKeypad(onDigit: _onDigit, onBackspace: _onBackspace, onConfirm: _save),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _delete,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: FolioColors.foreground,
-                side: const BorderSide(color: FolioColors.border),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FolioRadii.pill)),
-              ),
-              child: const Text('delete transaction'),
+            FolioKeypad(
+              onDigit: _onDigit,
+              onBackspace: _onBackspace,
+              onConfirm: _save,
+              showConfirmButton: false,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: FolioColors.foreground,
+                      foregroundColor: FolioColors.background,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(FolioRadii.pill),
+                      ),
+                    ),
+                    child: const Icon(Icons.check, size: 24),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: _delete,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFD32F2F),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(FolioRadii.pill),
+                      ),
+                    ),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

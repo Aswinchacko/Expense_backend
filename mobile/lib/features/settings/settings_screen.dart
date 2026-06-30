@@ -46,7 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           return;
         }
         final ok = await _localAuth.authenticate(
-          localizedReason: 'Enable app lock for folio',
+          localizedReason: 'Enable app lock for Folio',
           options: const AuthenticationOptions(biometricOnly: false),
         );
         if (!ok) return;
@@ -124,10 +124,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!isTabVisited(ref, 3)) {
-      return const SafeArea(child: SizedBox.expand());
-    }
-
     final profile = ref.watch(profileProvider);
     final auth = ref.watch(authNotifierProvider);
     final currencyCode = ref.watch(currencyCodeProvider);
@@ -136,7 +132,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
         children: [
-          Text('settings', style: FolioTheme.amountStyle(context, size: 28)),
+          Text('Settings', style: FolioTheme.amountStyle(context, size: 28)),
           const SizedBox(height: 24),
           profile.when(
             data: (p) {
@@ -163,20 +159,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 _SettingTile(
-                  label: 'display name',
+                  label: 'Display name',
                   value: profile.maybeWhen(data: (p) => p.displayName ?? p.firstName, orElse: () => null),
                   onTap: () => _editName(profile.valueOrNull?.displayName),
                 ),
                 const Divider(height: 1, color: FolioColors.border),
                 _SettingTile(
-                  label: 'currency',
+                  label: 'Currency',
                   value: currencyCode,
                   onTap: () => _showCurrencyPicker(currencyCode),
                 ),
                 const Divider(height: 1, color: FolioColors.border),
                 _SettingTile(
-                  label: 'app lock',
-                  subtitle: 'pin · fingerprint · face',
+                  label: 'App lock',
+                  subtitle: 'PIN · fingerprint · face',
                   trailing: Switch(
                     value: _biometricEnabled,
                     onChanged: _toggleBiometric,
@@ -190,8 +186,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 16),
           FolioCard(
             child: _SettingTile(
-              label: 'export bank statement',
-              subtitle: _exporting ? 'generating pdf…' : 'monthly pdf with spending breakdown',
+              label: 'Export bank statement',
+              subtitle: _exporting ? 'Generating PDF…' : 'Monthly PDF with spending breakdown',
               trailing: _exporting
                   ? const SizedBox(
                       width: 20,
@@ -215,7 +211,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('sign out'),
+              child: const Text('Sign out'),
             ),
           ),
         ],

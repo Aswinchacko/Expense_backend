@@ -30,52 +30,80 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(profileProvider);
         },
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
           children: [
             FolioGreeting(name: name),
             const SizedBox(height: 20),
-            analytics.when(
-              loading: () => const SizedBox(
-                height: 220,
-                child: Center(child: CircularProgressIndicator(color: FolioColors.foreground)),
-              ),
-              error: (e, _) => Text('$e', style: FolioText.meta12),
-              data: (summary) => FolioCard(
-                child: Column(
-                  children: [
-                    BalanceHero(amount: summary.balance, currency: currency),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _pill('in', '$currency${summary.incomeTotal.toStringAsFixed(0)}'),
-                        const SizedBox(width: 10),
-                        _pill('out', '$currency${summary.expenseTotal.toStringAsFixed(0)}'),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    SparklineChart(points: summary.trend, height: 140),
-                    const SizedBox(height: 12),
-                    MonthScrubber(
-                      selected: month,
-                      onSelected: (m) => ref.read(selectedMonthProvider.notifier).state = m,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildSummary(ref, analytics, currency, month),
             const SizedBox(height: 28),
-            Text('transactions', style: FolioText.label16),
+            const Text('Transactions', style: FolioText.label16),
             const SizedBox(height: 8),
-            expensesAsync.when(
-              loading: () => _loadingList(ref, pending, analytics, currency),
-              error: (e, _) => Text('$e', style: FolioText.meta12),
-              data: (list) => _transactionList(context, ref, list, pending, currency),
-            ),
+            _buildTransactions(context, ref, expensesAsync, pending, currency),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildSummary(
+    WidgetRef ref,
+    AsyncValue<AnalyticsSummary> analytics,
+    String currency,
+    DateTime month,
+  ) {
+    final summary = analytics.valueOrNull;
+    if (summary == null && analytics.isLoading) {
+      return const SizedBox(
+        height: 220,
+        child: Center(child: CircularProgressIndicator(color: FolioColors.foreground)),
+      );
+    }
+    if (summary == null) {
+      return Text('${analytics.error}', style: FolioText.meta12);
+    }
+    return FolioCard(
+      child: Column(
+        children: [
+          BalanceHero(amount: summary.balance, currency: currency),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _pill('In', '$currency${summary.incomeTotal.toStringAsFixed(0)}'),
+              const SizedBox(width: 10),
+              _pill('Out', '$currency${summary.expenseTotal.toStringAsFixed(0)}'),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text('Daily spending', style: FolioText.meta12),
+          const SizedBox(height: 8),
+          DailySpendChart(points: summary.dailySpend, height: 72),
+          const SizedBox(height: 12),
+          MonthScrubber(
+            selected: month,
+            onSelected: (m) => ref.read(selectedMonthProvider.notifier).state = m,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactions(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<Expense>> expensesAsync,
+    List<Expense> pending,
+    String currency,
+  ) {
+    final list = expensesAsync.valueOrNull;
+    if (list == null && expensesAsync.isLoading) {
+      return _loadingList(ref, pending, currency);
+    }
+    if (list == null) {
+      return Text('${expensesAsync.error}', style: FolioText.meta12);
+    }
+    return _transactionList(context, ref, list, pending, currency);
   }
 
   Widget _pill(String label, String value) {
@@ -89,10 +117,10 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _loadingList(WidgetRef ref, List<Expense> pending, AsyncValue analytics, String currency) {
+  Widget _loadingList(WidgetRef ref, List<Expense> pending, String currency) {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final todayPending = pending.where((e) => e.date == today).toList();
-    if (todayPending.isEmpty && !analytics.hasValue) {
+    if (todayPending.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(child: CircularProgressIndicator(color: FolioColors.foreground)),
@@ -117,7 +145,7 @@ class HomeScreen extends ConsumerWidget {
     if (merged.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Text('no transactions this month', style: FolioText.meta12),
+        child: Text('No transactions this month', style: FolioText.meta12),
       );
     }
     return Column(

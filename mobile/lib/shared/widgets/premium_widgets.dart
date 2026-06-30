@@ -42,7 +42,7 @@ class FolioGreeting extends StatelessWidget {
       children: [
         Text('Hey $name', style: FolioText.amount28),
         const SizedBox(height: 4),
-        Text('here\'s your money snapshot', style: FolioText.meta12),
+        Text('Here\'s your money snapshot', style: FolioText.meta12),
       ],
     );
   }

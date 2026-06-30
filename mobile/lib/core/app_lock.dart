@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../shared/widgets/folio_brand.dart';
 import 'theme/folio_theme.dart';
 
 class AppLock {
@@ -26,7 +27,8 @@ class AppLock {
   void markUnlocked() => _unlocked = true;
 
   Future<bool> unlockIfNeeded() async {
-    if (_unlocked || _checking) return _unlocked;
+    if (_unlocked) return true;
+    if (_checking) return false;
     if (!await isEnabled()) {
       _unlocked = true;
       return true;
@@ -34,7 +36,7 @@ class AppLock {
     _checking = true;
     try {
       final ok = await _auth.authenticate(
-        localizedReason: 'Unlock folio',
+        localizedReason: 'Unlock Folio',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: false,
@@ -62,8 +64,9 @@ class AppLockGate extends StatefulWidget {
 }
 
 class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
-  bool _ready = false;
+  bool _showLock = false;
   bool _enabled = false;
+  bool _checking = false;
 
   @override
   void initState() {
@@ -80,72 +83,167 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      AppLock.instance.lock();
-    }
-    if (state == AppLifecycleState.resumed) {
-      setState(() => _ready = false);
+    if (state == AppLifecycleState.paused) {
+      _onBackground();
+    } else if (state == AppLifecycleState.resumed && _enabled) {
       _check();
     }
   }
 
+  Future<void> _onBackground() async {
+    final enabled = await AppLock.instance.isEnabled();
+    if (!enabled || !mounted) return;
+    await AppLock.instance.lock();
+    if (mounted) setState(() => _showLock = true);
+  }
+
   Future<void> _check() async {
-    _enabled = await AppLock.instance.isEnabled();
-    final ok = await AppLock.instance.unlockIfNeeded();
-    if (mounted) setState(() => _ready = ok);
+    if (_checking) return;
+    _checking = true;
+
+    try {
+      _enabled = await AppLock.instance.isEnabled();
+      if (!_enabled) {
+        AppLock.instance.markUnlocked();
+        if (!mounted) return;
+        setState(() {
+          _checking = false;
+          _showLock = false;
+        });
+        return;
+      }
+
+      if (mounted) setState(() => _showLock = true);
+      final ok = await AppLock.instance.unlockIfNeeded();
+      if (!mounted) return;
+      setState(() {
+        _checking = false;
+        _showLock = !ok;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _checking = false;
+        _showLock = _enabled;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_ready) return widget.child;
+    return Stack(
+      fit: StackFit.expand,
+      alignment: Alignment.center,
+      textDirection: TextDirection.ltr,
+      children: [
+        widget.child,
+        if (_showLock)
+          Positioned.fill(
+            child: _LockScreen(
+              enabled: _enabled,
+              checking: _checking,
+              onUnlock: _check,
+            ),
+          ),
+      ],
+    );
+  }
+}
 
+class _LockScreen extends StatelessWidget {
+  const _LockScreen({
+    required this.enabled,
+    required this.checking,
+    required this.onUnlock,
+  });
+
+  final bool enabled;
+  final bool checking;
+  final VoidCallback onUnlock;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
       color: FolioColors.background,
-      child: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: FolioColors.foreground,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: const Icon(Icons.lock_outline, color: FolioColors.background, size: 32),
-                ),
-                const SizedBox(height: 24),
-                Text('folio is locked', style: FolioText.amount28),
-                const SizedBox(height: 8),
-                Text(
-                  _enabled ? 'use your device pin or biometrics' : 'checking…',
-                  style: FolioText.meta12,
-                  textAlign: TextAlign.center,
-                ),
-                if (_enabled) ...[
-                  const SizedBox(height: 28),
-                  FilledButton.icon(
-                    onPressed: _check,
-                    icon: const Icon(Icons.fingerprint),
-                    label: const Text('unlock'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: FolioColors.foreground,
-                      foregroundColor: FolioColors.background,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(FolioRadii.pill),
-                      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const _LockBackdrop(),
+          SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const FolioMonogram(size: 72),
+                    const SizedBox(height: 20),
+                    Text('Folio is locked', style: FolioText.amount28),
+                    const SizedBox(height: 8),
+                    Text(
+                      checking
+                          ? 'Checking…'
+                          : 'Use your device PIN or biometrics',
+                      style: FolioText.meta12,
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                ],
-              ],
+                    if (!checking) ...[
+                      const SizedBox(height: 28),
+                      FilledButton.icon(
+                        onPressed: onUnlock,
+                        icon: const Icon(Icons.fingerprint),
+                        label: const Text('Unlock'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: FolioColors.foreground,
+                          foregroundColor: FolioColors.background,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(FolioRadii.pill),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LockBackdrop extends StatelessWidget {
+  const _LockBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned(
+          top: MediaQuery.of(context).size.height * 0.12,
+          child: Opacity(
+            opacity: 0.07,
+            child: FolioMonogram(size: MediaQuery.of(context).size.width * 0.85),
+          ),
+        ),
+        Positioned(
+          bottom: MediaQuery.of(context).size.height * 0.14,
+          child: Opacity(
+            opacity: 0.05,
+            child: Text(
+              'Folio',
+              style: FolioText.amount28.copyWith(
+                fontSize: 120,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -4,
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

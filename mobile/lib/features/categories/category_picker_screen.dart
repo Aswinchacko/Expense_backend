@@ -7,7 +7,6 @@ import '../../core/theme/folio_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/category_icon.dart';
 import '../data/providers.dart';
-import '../data/repositories.dart';
 
 class CategoryPickerScreen extends ConsumerWidget {
   const CategoryPickerScreen({super.key, this.pickerMode = false});
@@ -40,13 +39,13 @@ class CategoryPickerScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  isEdit ? 'edit category' : 'new category',
+                  isEdit ? 'Edit category' : 'New category',
                   style: FolioTheme.labelStyle(ctx, size: 18),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(hintText: 'name'),
+                  decoration: const InputDecoration(hintText: 'Name'),
                   textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 20),
@@ -82,30 +81,22 @@ class CategoryPickerScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: () async {
+                  onPressed: () {
                     final name = nameController.text.trim();
                     if (name.isEmpty) return;
+                    final icon = CategoryIcons.storageKey(selectedIcon);
+                    Navigator.pop(ctx);
 
-                    try {
-                      if (isEdit) {
-                        await ref.read(categoryRepositoryProvider).update(
-                              id: existing.id,
-                              name: name,
-                              icon: CategoryIcons.storageKey(selectedIcon),
-                            );
-                        showFolioSnack('category updated');
-                      } else {
-                        await ref.read(categoryRepositoryProvider).create(
-                              name: name,
-                              icon: CategoryIcons.storageKey(selectedIcon),
-                            );
-                        showFolioSnack('category added');
-                      }
-                      ref.invalidate(categoriesProvider);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    } catch (e) {
+                    final notifier = ref.read(categoriesProvider.notifier);
+                    final action = isEdit
+                        ? notifier.updateOptimistic(id: existing.id, name: name, icon: icon)
+                        : notifier.createOptimistic(name: name, icon: icon);
+
+                    action.then((_) {
+                      showFolioSnack(isEdit ? 'Category updated' : 'Category added');
+                    }).catchError((e) {
                       showFolioSnack('$e', isError: true);
-                    }
+                    });
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: FolioColors.foreground,
@@ -115,16 +106,16 @@ class CategoryPickerScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(FolioRadii.pill),
                     ),
                   ),
-                  child: Text(isEdit ? 'save' : 'add'),
+                  child: Text(isEdit ? 'Save' : 'Add'),
                 ),
-                if (isEdit) ...[
+                if (isEdit && existing.isCustom) ...[
                   const SizedBox(height: 10),
                   TextButton(
                     onPressed: () {
                       Navigator.pop(ctx);
                       _confirmDelete(context, ref, existing);
                     },
-                    child: const Text('delete category'),
+                    child: const Text('Delete category'),
                   ),
                 ],
               ],
@@ -139,20 +130,19 @@ class CategoryPickerScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('delete category?'),
-        content: Text('remove "${cat.name}"? expenses keep their history.'),
+        title: const Text('Delete category?'),
+        content: Text('Remove "${cat.name}"? Expenses keep their history.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('delete')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
     );
     if (ok != true) return;
 
     try {
-      await ref.read(categoryRepositoryProvider).delete(cat.id);
-      ref.invalidate(categoriesProvider);
-      showFolioSnack('category deleted');
+      await ref.read(categoriesProvider.notifier).deleteOptimistic(cat.id);
+      showFolioSnack('Category deleted');
     } catch (e) {
       showFolioSnack('$e', isError: true);
     }
@@ -160,20 +150,17 @@ class CategoryPickerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!pickerMode && !isTabVisited(ref, 1)) {
-      return const SafeArea(child: SizedBox.expand());
-    }
+    final categories = ref.watch(categoriesProvider);
+    final cats = categories.valueOrNull;
 
-    final categories = pickerMode
-        ? ref.watch(categoriesProvider)
-        : (isTabVisited(ref, 1)
-            ? ref.watch(categoriesProvider)
-            : const AsyncValue<List<Category>>.loading());
-
-    final body = categories.when(
-      loading: () => const Center(child: CircularProgressIndicator(color: FolioColors.foreground)),
-      error: (e, _) => Center(child: Text('$e')),
-      data: (cats) => GridView.builder(
+    Widget body;
+    if (categories.isLoading && cats == null) {
+      body = const Center(child: CircularProgressIndicator(color: FolioColors.foreground));
+    } else if (categories.hasError && cats == null) {
+      body = Center(child: Text('${categories.error}'));
+    } else {
+      final list = cats ?? [];
+      body = GridView.builder(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 4,
@@ -181,9 +168,9 @@ class CategoryPickerScreen extends ConsumerWidget {
           mainAxisSpacing: 12,
           childAspectRatio: 0.85,
         ),
-        itemCount: cats.length + (pickerMode ? 0 : 1),
+        itemCount: list.length + (pickerMode ? 0 : 1),
         itemBuilder: (context, i) {
-          if (!pickerMode && i == cats.length) {
+          if (!pickerMode && i == list.length) {
             return GestureDetector(
               onTap: () => _showCategorySheet(context, ref),
               child: Column(
@@ -198,43 +185,32 @@ class CategoryPickerScreen extends ConsumerWidget {
                     child: const Icon(Icons.add, size: 26),
                   ),
                   const SizedBox(height: 8),
-                  Text('add', style: FolioTheme.metaStyle(context, size: 11)),
+                  Text('Add', style: FolioTheme.metaStyle(context, size: 11)),
                 ],
               ),
             );
           }
 
-          final cat = cats[i];
-          return GestureDetector(
+          final cat = list[i];
+          return _CategoryTile(
+            cat: cat,
+            pickerMode: pickerMode,
             onTap: () {
               if (pickerMode) {
                 context.pop(cat);
-              } else if (cat.isCustom) {
+              } else {
                 _showCategorySheet(context, ref, existing: cat);
               }
             },
-            child: Column(
-              children: [
-                CategoryIconTile(icon: cat.icon),
-                const SizedBox(height: 8),
-                Text(
-                  cat.name,
-                  style: FolioTheme.metaStyle(context, size: 11),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
           );
         },
-      ),
-    );
+      );
+    }
 
     if (pickerMode) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('categories', style: FolioTheme.labelStyle(context, size: 18)),
+          title: Text('Categories', style: FolioTheme.labelStyle(context, size: 18)),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -262,8 +238,8 @@ class CategoryPickerScreen extends ConsumerWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('categories', style: FolioTheme.amountStyle(context, size: 28)),
-                    Text('tap custom ones to edit', style: FolioText.meta12),
+                    Text('Categories', style: FolioTheme.amountStyle(context, size: 28)),
+                    Text('Tap any category to edit', style: FolioText.meta12),
                   ],
                 ),
                 IconButton(
@@ -275,6 +251,58 @@ class CategoryPickerScreen extends ConsumerWidget {
           ),
           Expanded(child: body),
         ],
+      ),
+    );
+  }
+}
+
+class _CategoryTile extends StatefulWidget {
+  const _CategoryTile({
+    required this.cat,
+    required this.pickerMode,
+    required this.onTap,
+  });
+
+  final Category cat;
+  final bool pickerMode;
+  final VoidCallback onTap;
+
+  @override
+  State<_CategoryTile> createState() => _CategoryTileState();
+}
+
+class _CategoryTileState extends State<_CategoryTile> {
+  double _scale = 1;
+
+  Future<void> _handleTap() async {
+    setState(() => _scale = 0.92);
+    await Future<void>.delayed(const Duration(milliseconds: 90));
+    if (!mounted) return;
+    setState(() => _scale = 1);
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _handleTap,
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Column(
+          children: [
+            CategoryIconTile(icon: widget.cat.icon),
+            const SizedBox(height: 8),
+            Text(
+              widget.cat.name,
+              style: FolioTheme.metaStyle(context, size: 11),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

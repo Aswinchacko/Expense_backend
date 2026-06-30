@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/folio_theme.dart';
 import '../../features/data/providers.dart';
 
-class FolioShell extends ConsumerWidget {
+/// Bridges tab bar taps with the swipeable [FolioPager] without Riverpod churn.
+class TabPagerHandle {
+  TabPagerHandle(this.animateTo);
+  final Future<void> Function(int index) animateTo;
+}
+
+class TabPagerBridge {
+  static TabPagerHandle? handle;
+}
+
+class FolioShell extends ConsumerStatefulWidget {
   const FolioShell({
     super.key,
     required this.navigationShell,
@@ -14,20 +25,111 @@ class FolioShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FolioShell> createState() => _FolioShellState();
+}
+
+class _FolioShellState extends ConsumerState<FolioShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      prefetchAppData(ref);
+    });
+  }
+
+  Future<void> _selectTab(int index) async {
+    if (index == widget.navigationShell.currentIndex) return;
+    HapticFeedback.selectionClick();
+    await TabPagerBridge.handle?.animateTo(index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       extendBody: true,
       bottomNavigationBar: FolioBottomBar(
-        currentIndex: navigationShell.currentIndex,
-        onSelect: (index) {
-          markTabVisited(ref, index);
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
+        currentIndex: widget.navigationShell.currentIndex,
+        onSelect: _selectTab,
       ),
+    );
+  }
+}
+
+class FolioPager extends StatefulWidget {
+  const FolioPager({
+    super.key,
+    required this.navigationShell,
+    required this.children,
+  });
+
+  final StatefulNavigationShell navigationShell;
+  final List<Widget> children;
+
+  @override
+  State<FolioPager> createState() => _FolioPagerState();
+}
+
+class _FolioPagerState extends State<FolioPager> {
+  static const _duration = Duration(milliseconds: 320);
+  static const _curve = Curves.easeOutCubic;
+
+  late final PageController _controller;
+  int _lastIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastIndex = widget.navigationShell.currentIndex;
+    _controller = PageController(initialPage: _lastIndex);
+    TabPagerBridge.handle = TabPagerHandle(_animateTo);
+  }
+
+  @override
+  void dispose() {
+    if (TabPagerBridge.handle?.animateTo == _animateTo) {
+      TabPagerBridge.handle = null;
+    }
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant FolioPager oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final index = widget.navigationShell.currentIndex;
+    if (index != _lastIndex && _controller.hasClients) {
+      _animateTo(index);
+    }
+  }
+
+  Future<void> _animateTo(int index) {
+    if (!mounted) return Future.value();
+    _lastIndex = index;
+    if (!_controller.hasClients) return Future.value();
+    return _controller.animateToPage(index, duration: _duration, curve: _curve);
+  }
+
+  void _onPageChanged(int index) {
+    if (index == widget.navigationShell.currentIndex) {
+      _lastIndex = index;
+      return;
+    }
+    HapticFeedback.selectionClick();
+    _lastIndex = index;
+    widget.navigationShell.goBranch(index, initialLocation: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView(
+      controller: _controller,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      onPageChanged: _onPageChanged,
+      children: [
+        for (final child in widget.children) RepaintBoundary(child: child),
+      ],
     );
   }
 }
@@ -94,12 +196,17 @@ class _NavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(
-        icon,
-        color: selected ? FolioColors.background : FolioColors.background.withValues(alpha: 0.5),
-        size: 22,
+    return AnimatedScale(
+      scale: selected ? 1.08 : 1,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      child: IconButton(
+        onPressed: onTap,
+        icon: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: selected ? 1 : 0.45,
+          child: Icon(icon, color: FolioColors.background, size: 22),
+        ),
       ),
     );
   }
