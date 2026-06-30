@@ -27,8 +27,18 @@ function getPeriodRange(period: string): { from: string; to: string } {
 
 function parsePath(req: VercelRequest): string[] {
   const raw = req.query.path;
-  if (!raw) return [];
-  return Array.isArray(raw) ? raw : [raw];
+  if (raw) {
+    const segments = Array.isArray(raw) ? raw : [raw];
+    return segments.flatMap((segment) => segment.split('/').filter(Boolean));
+  }
+
+  const url = (req.url ?? '').split('?')[0];
+  const apiIdx = url.indexOf('/api/');
+  if (apiIdx !== -1) {
+    return url.slice(apiIdx + 5).split('/').filter(Boolean);
+  }
+  if (url.endsWith('/api')) return [];
+  return [];
 }
 
 async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
