@@ -99,7 +99,12 @@ class ExpenseRepository {
     return Expense.fromJson(res['data'] as Map<String, dynamic>);
   }
 
-  Future<void> delete(String id) => _api.delete('/api/expenses/$id');
+  Future<void> delete(String id) async {
+    await _api.post('/api/expenses', body: {
+      'action': 'delete',
+      'id': id,
+    });
+  }
 
   Future<Expense> update({
     required String id,
@@ -110,7 +115,9 @@ class ExpenseRepository {
     String? currency,
     String? merchant,
   }) async {
-    final res = await _api.patch('/api/expenses/$id', body: {
+    final res = await _api.post('/api/expenses', body: {
+      'action': 'update',
+      'id': id,
       if (categoryId != null) 'category_id': categoryId,
       if (amount != null) 'amount': amount,
       if (type != null) 'type': type == TransactionType.income ? 'income' : 'expense',
@@ -151,14 +158,21 @@ class CategoryRepository {
     String? name,
     String? icon,
   }) async {
-    final res = await _api.patch('/api/categories/$id', body: {
+    final res = await _api.post('/api/categories', body: {
+      'action': 'update',
+      'id': id,
       if (name != null) 'name': name,
       if (icon != null) 'icon': icon,
     });
     return Category.fromJson(res['data'] as Map<String, dynamic>);
   }
 
-  Future<void> delete(String id) => _api.delete('/api/categories/$id');
+  Future<void> delete(String id) async {
+    await _api.post('/api/categories', body: {
+      'action': 'delete',
+      'id': id,
+    });
+  }
 }
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {

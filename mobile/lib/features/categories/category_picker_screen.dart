@@ -117,6 +117,16 @@ class CategoryPickerScreen extends ConsumerWidget {
                   ),
                   child: Text(isEdit ? 'save' : 'add'),
                 ),
+                if (isEdit) ...[
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _confirmDelete(context, ref, existing);
+                    },
+                    child: const Text('delete category'),
+                  ),
+                ],
               ],
             ),
           );
@@ -146,39 +156,6 @@ class CategoryPickerScreen extends ConsumerWidget {
     } catch (e) {
       showFolioSnack('$e', isError: true);
     }
-  }
-
-  void _showCategoryActions(BuildContext context, WidgetRef ref, Category cat) {
-    if (!cat.isCustom) return;
-
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(cat.name),
-              subtitle: const Text('edit name or icon'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showCategorySheet(context, ref, existing: cat);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('delete'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDelete(context, ref, cat);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -230,31 +207,15 @@ class CategoryPickerScreen extends ConsumerWidget {
           final cat = cats[i];
           return GestureDetector(
             onTap: () {
-              if (pickerMode) context.pop(cat);
+              if (pickerMode) {
+                context.pop(cat);
+              } else if (cat.isCustom) {
+                _showCategorySheet(context, ref, existing: cat);
+              }
             },
-            onLongPress: cat.isCustom ? () => _showCategoryActions(context, ref, cat) : null,
             child: Column(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CategoryIconTile(icon: cat.icon),
-                    if (cat.isCustom && !pickerMode)
-                      Positioned(
-                        right: -4,
-                        top: -4,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: const BoxDecoration(
-                            color: FolioColors.foreground,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.more_horiz, size: 12, color: FolioColors.background),
-                        ),
-                      ),
-                  ],
-                ),
+                CategoryIconTile(icon: cat.icon),
                 const SizedBox(height: 8),
                 Text(
                   cat.name,
@@ -302,7 +263,7 @@ class CategoryPickerScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('categories', style: FolioTheme.amountStyle(context, size: 28)),
-                    Text('long-press custom ones to edit', style: FolioText.meta12),
+                    Text('tap custom ones to edit', style: FolioText.meta12),
                   ],
                 ),
                 IconButton(
